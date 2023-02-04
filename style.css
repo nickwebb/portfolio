@@ -4,6 +4,10 @@
 
 @font-face { font-family: 'Cocogoose-Light'; src: url('cocogoose-pro-light-webfont.woff');}
 
+* {
+  font-display: auto;
+}
+
 body {
   color: #ddd;
   font-family: "Inter", sans-serif;
@@ -87,7 +91,7 @@ line-height: 40px;
   #container p {
      font-size: 48px;
   }
-  
+
   #container #result {
       font-size: 48px;
   }
@@ -100,7 +104,7 @@ line-height: 40px;
   #container p {
      font-size: 35px;
   }
-  
+
   #container #result {
       font-size: 35px;
   }
