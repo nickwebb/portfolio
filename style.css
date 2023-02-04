@@ -6,6 +6,7 @@
 
 * {
   font-display: auto;
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
