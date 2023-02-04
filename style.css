@@ -1,0 +1,107 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;400;600;800&display=swap');
+
+@font-face { font-family: 'Cocogoose'; src: url('cocogoose-pro-regular-webfont.woff');}
+
+@font-face { font-family: 'Cocogoose-Light'; src: url('cocogoose-pro-light-webfont.woff');}
+
+body {
+  color: #ddd;
+  font-family: "Inter", sans-serif;
+  background-color: black;
+  background-image: url(./imgs/blobs.webp);
+  background-repeat: no-repeat;
+  background-size: cover;
+  margin: 0;
+  min-height: 100vh;
+}
+
+#container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 80vh;
+  /*max-width: 1000px;*/
+  flex-direction: column;
+  margin: 0 30rem;
+  padding: 0 20px;
+}
+
+
+
+h1 {
+  font-family: 'Cocogoose', "Inter", sans-serif;
+  /* font-family: 'Cocogoose-Light', sans-serif; */
+  font-size: 2.5rem;
+  line-height: 1.2;
+}
+
+#result {
+  color: #ddd;
+  font-family: 'Inter', sans-serif;
+  /* font-family: 'Cocogoose-Light', sans-serif; */
+  font-size: 64px;
+  font-weight: 300;
+}
+
+button {
+  color: #ddd;
+  font-family: 'Cocogoose', sans-serif;
+  font-size: 24px;
+  background-color: #F95D5D;
+  padding: 10px 20px 0;
+  font-weight: 700;
+  border-radius: 8px;
+  /* drop shadow here*/
+  box-shadow: 0 0 10px #666;
+  border: 0;
+  cursor: pointer;
+line-height: 40px;
+  display: flex;
+  align-items:  center;
+  justify-content: center;
+}
+
+#shuffleButton {
+  margin-bottom: 20px;
+  max-width: 200px;
+}
+
+#shuffleButton:hover {
+  background-color: #d23838;
+}
+
+
+.sub {
+  color: #ddd;
+  font-family: "Inter", sans-serif;
+  background-color: #888;
+  font-size: 16px;
+  padding: 10px 20px;
+  font-weight: 700;
+}
+
+@media only screen and (max-width: 1500px) {
+  #container {
+    margin: 0 10rem;
+  }
+  #container p {
+     font-size: 48px;
+  }
+  
+  #container #result {
+      font-size: 48px;
+  }
+}
+
+@media screen and (max-device-width:900px), screen and (max-width:900px) {
+    #container {
+    margin: 0 10px;
+  }
+  #container p {
+     font-size: 35px;
+  }
+  
+  #container #result {
+      font-size: 35px;
+  }
+}
