@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smile Property Lets | Student Housing</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FF6B00;
+            --secondary: #FFE0CC;
+            --dark: #333333;
+            --light: #FFFFFF;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background: #f5f5f5;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, #FF8533 100%);
+            padding: 2rem 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 3.5rem;
+            font-weight: 800;
+            text-align: center;
+            color: var(--light);
+            text-transform: uppercase;
+            letter-spacing: -2px;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 0px rgba(0,0,0,0.1);
+        }
+
+        .logo span {
+            color: var(--secondary);
+        }
+
+        .subheading {
+            color: var(--light);
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        .filter-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: var(--light);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        select, button {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        select {
+            background: var(--secondary);
+            flex: 1;
+            min-width: 200px;
+            cursor: pointer;
+        }
+
+        button {
+            background: var(--primary);
+            color: var(--light);
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+        }
+
+        .properties-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            padding: 2rem 2rem 4rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .property-card {
+            background: var(--light);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+
+        .property-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .property-image {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+        }
+
+        .property-info {
+            padding: 1.5rem;
+        }
+
+        .property-location {
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .property-price {
+            font-size: 1.4rem;
+            font-weight: 800;
+            margin: 0.5rem 0;
+        }
+
+        .property-details {
+            color: #666;
+        }
+
+        .features {
+            background: var(--light);
+            padding: 5rem 2rem;
+            text-align: center;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+            max-width: 1200px;
+            margin: 3rem auto;
+        }
+
+        .feature-card {
+            padding: 2rem;
+            background: #fff;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .testimonials {
+            background: var(--secondary);
+            padding: 5rem 2rem;
+            text-align: center;
+        }
+
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 3rem auto;
+        }
+
+        .testimonial-card {
+            background: var(--light);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .section-title {
+            font-size: 2.8rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        footer {
+            background: var(--dark);
+            color: var(--light);
+            padding: 3rem 2rem;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .footer-links a {
+            color: var(--light);
+            text-decoration: none;
+            display: block;
+            margin: 0.5rem 0;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .properties-heading {
+            text-align: center;
+            padding-top: 3rem;
+        }
+
+        .properties-subheading {
+            color: #666;
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1 class="logo">Smile<span>.</span></h1>
+        <p class="subheading">Premium Student Living Made Simple | Your Home Away From Home</p>
+        <div class="filter-container">
+            <select id="location">
+                <option value="">Select Location</option>
+                <option value="nottingham">Nottingham</option>
+                <option value="liverpool">Liverpool</option>
+                <option value="newcastle">Newcastle</option>
+            </select>
+            <select id="bedrooms">
+                <option value="">Number of Bedrooms</option>
+                <option value="3">3 Bedrooms</option>
+                <option value="4">4 Bedrooms</option>
+                <option value="5">5 Bedrooms</option>
+                <option value="6">6+ Bedrooms</option>
+            </select>
+            <button>Find Your Pad</button>
+        </div>
+    </header>
+
+    <div class="properties-heading">
+        <h2 class="section-title">Featured Properties</h2>
+        <p class="properties-subheading">Prime Locations • All Bills Included • Premium Furnishings</p>
+    </div>
+
+    <main class="properties-grid">
+        <div class="property-card">
+            <img src="https://images.unsplash.com/photo-1605276374104-dee2a0ed3cd6" alt="Student House" class="property-image">
+            <div class="property-info">
+                <div class="property-location">Nottingham City Center</div>
+                <div class="property-price">£95 pppw</div>
+                <div class="property-details">4 Bed • 2 Bath • Bills Included</div>
+            </div>
+        </div>
+
+        <div class="property-card">
+            <img src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2" alt="Student House" class="property-image">
+            <div class="property-info">
+                <div class="property-location">Liverpool - Baltic Triangle</div>
+                <div class="property-price">£89 pppw</div>
+                <div class="property-details">5 Bed • 3 Bath • Garden</div>
+            </div>
+        </div>
+
+        <div class="property-card">
+            <img src="https://images.unsplash.com/photo-1580587771525-78b9dba3b914" alt="Student House" class="property-image">
+            <div class="property-info">
+                <div class="property-location">Newcastle Heaton</div>
+                <div class="property-price">£85 pppw</div>
+                <div class="property-details">6 Bed • 2 Bath • Parking</div>
+            </div>
+        </div>
+
+        <div class="property-card">
+            <img src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750" alt="Student House" class="property-image">
+            <div class="property-info">
+                <div class="property-location">Nottingham Lenton</div>
+                <div class="property-price">£92 pppw</div>
+                <div class="property-details">5 Bed • 3 Bath • Garden</div>
+            </div>
+        </div>
+    </main>
+
+    <section class="features">
+        <h2 class="section-title">Why Choose Smile?</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <h3>Premium Interior Design</h3>
+                <p>Exclusively furnished with John Lewis furniture for that premium feel</p>
+            </div>
+            <div class="feature-card">
+                <h3>Full Fiber Internet</h3>
+                <p>Lightning-fast internet ready from day one</p>
+            </div>
+            <div class="feature-card">
+                <h3>Bills Included</h3>
+                <p>All utilities covered - no surprise costs</p>
+            </div>
+            <div class="feature-card">
+                <h3>24/7 Support</h3>
+                <p>Fast and responsive service whenever you need it</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="testimonials">
+        <h2 class="section-title">What Our Students Say</h2>
+        <div class="testimonials-grid">
+            <div class="testimonial-card">
+                <p>"Best student accommodation I've lived in. The service is incredible!"</p>
+                <h4>Sarah, University of Nottingham</h4>
+            </div>
+            <div class="testimonial-card">
+                <p>"Everything works perfectly and the furniture is actually nice!"</p>
+                <h4>James, Liverpool John Moores</h4>
+            </div>
+            <div class="testimonial-card">
+                <p>"They sorted our maintenance issue within hours. Fantastic service!"</p>
+                <h4>Emma, Newcastle University</h4>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-links">
+                <h3>Legal</h3>
+                <a href="#">Privacy Policy</a>
+                <a href="#">GDPR Notice</a>
+                <a href="#">Terms & Conditions</a>
+            </div>
+            <div class="footer-links">
+                <h3>Company</h3>
+                <a href="#">About Us</a>
+                <a href="#">Contact</a>
+                <a href="#">Careers</a>
+            </div>
+            <div class="footer-links">
+                <h3>Connect</h3>
+                <div class="social-links">
+                    <a href="#">Facebook</a>
+                    <a href="#">Instagram</a>
+                    <a href="#">Twitter</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
