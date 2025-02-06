@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rent vs Buy Calculator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #6B47FF;
+            --secondary: #E0CCFF;
+            --dark: #2A2A2A;
+            --light: #FFFFFF;
+            --gradient: linear-gradient(135deg, #6B47FF 0%, #9747FF 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background: #f5f5f5;
+            color: var(--dark);
+        }
+
+        .calculator-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: var(--light);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .calculator-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: var(--gradient);
+        }
+
+        .calculator-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .input-section {
+            padding: 2rem;
+            background: rgba(107, 71, 255, 0.03);
+            border-radius: 15px;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="number"]:focus,
+        select:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+
+        .results-section {
+            padding: 2rem;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+
+        .chart-container {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+
+        .calculate-btn {
+            background: var(--gradient);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        .calculate-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .result-card {
+            background: var(--gradient);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+        }
+
+        .result-card h3 {
+            margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .calculator-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator-container">
+        <h1 style="margin-bottom: 2rem; text-align: center;">Rent vs Buy Calculator</h1>
+        
+        <div class="calculator-grid">
+            <div class="input-section">
+                <h2>Property Details</h2>
+                <div class="input-group">
+                    <label for="property-price">Property Price (£)</label>
+                    <input type="number" id="property-price" min="0" step="1000" value="250000">
+                </div>
+                
+                <div class="input-group">
+                    <label for="down-payment">Down Payment (%)</label>
+                    <input type="number" id="down-payment" min="0" max="100" value="10">
+                </div>
+                
+                <div class="input-group">
+                    <label for="mortgage-rate">Mortgage Interest Rate (%)</label>
+                    <input type="number" id="mortgage-rate" min="0" step="0.1" value="3.5">
+                </div>
+                
+                <div class="input-group">
+                    <label for="mortgage-term">Mortgage Term (Years)</label>
+                    <input type="number" id="mortgage-term" min="5" max="35" value="25">
+                </div>
+
+                <div class="input-group">
+                    <label for="monthly-rent">Monthly Rent (£)</label>
+                    <input type="number" id="monthly-rent" min="0" value="1200">
+                </div>
+
+                <div class="input-group">
+                    <label for="property-growth">Expected Annual Property Growth (%)</label>
+                    <input type="number" id="property-growth" min="0" step="0.1" value="3">
+                </div>
+
+                <button class="calculate-btn" onclick="calculateComparison()">Calculate</button>
+            </div>
+
+            <div class="results-section">
+                <h2>Comparison Results</h2>
+                <div id="short-term" class="result-card">
+                    <h3>5 Year Outlook</h3>
+                    <p id="short-term-result"></p>
+                </div>
+                
+                <div id="medium-term" class="result-card">
+                    <h3>10 Year Outlook</h3>
+                    <p id="medium-term-result"></p>
+                </div>
+                
+                <div id="long-term" class="result-card">
+                    <h3>25 Year Outlook</h3>
+                    <p id="long-term-result"></p>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="comparison-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let myChart = null;
+
+        function calculateComparison() {
+            const propertyPrice = parseFloat(document.getElementById('property-price').value);
+            const downPayment = parseFloat(document.getElementById('down-payment').value) / 100;
+            const mortgageRate = parseFloat(document.getElementById('mortgage-rate').value) / 100;
+            const mortgageTerm = parseInt(document.getElementById('mortgage-term').value);
+            const monthlyRent = parseFloat(document.getElementById('monthly-rent').value);
+            const propertyGrowth = parseFloat(document.getElementById('property-growth').value) / 100;
+
+            const loanAmount = propertyPrice * (1 - downPayment);
+            const monthlyRate = mortgageRate / 12;
+            const numberOfPayments = mortgageTerm * 12;
+            const monthlyMortgage = (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / 
+                                  (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
+
+            const years = Array.from({length: 25}, (_, i) => i + 1);
+            const buyingCosts = years.map(year => {
+                const totalMortgagePaid = monthlyMortgage * year * 12;
+                const propertyValue = propertyPrice * Math.pow(1 + propertyGrowth, year);
+                return totalMortgagePaid + (propertyPrice * downPayment) - (propertyValue - propertyPrice);
+            });
+
+            const rentingCosts = years.map(year => monthlyRent * 12 * year);
+
+            updateChart(years, buyingCosts, rentingCosts);
+            updateResults(buyingCosts, rentingCosts);
+        }
+
+        function updateChart(years, buyingCosts, rentingCosts) {
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            const ctx = document.getElementById('comparison-chart').getContext('2d');
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: years,
+                    datasets: [{
+                        label: 'Cost of Buying',
+                        data: buyingCosts,
+                        borderColor: '#6B47FF',
+                        tension: 0.1
+                    }, {
+                        label: 'Cost of Renting',
+                        data: rentingCosts,
+                        borderColor: '#FF6B47',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Cumulative Costs Over Time'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Total Cost (£)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Years'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateResults(buyingCosts, rentingCosts) {
+            const formatCurrency = (value) => {
+                return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(value);
+            };
+
+            document.getElementById('short-term-result').textContent = 
+                `Buying: ${formatCurrency(buyingCosts[4])} vs Renting: ${formatCurrency(rentingCosts[4])}`;
+            
+            document.getElementById('medium-term-result').textContent = 
+                `Buying: ${formatCurrency(buyingCosts[9])} vs Renting: ${formatCurrency(rentingCosts[9])}`;
+            
+            document.getElementById('long-term-result').textContent = 
+                `Buying: ${formatCurrency(buyingCosts[24])} vs Renting: ${formatCurrency(rentingCosts[24])}`;
+        }
+
+        // Initial calculation
+        calculateComparison();
+    </script>
+</body>
+</html>
