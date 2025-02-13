@@ -263,39 +263,48 @@
             background: var(--primary);
         }
 
-        .featured-curation {
+        .content-sections {
             padding: 4rem 2rem;
             background: rgba(255,255,255,0.02);
             margin-top: 2rem;
         }
 
-        .track-grid {
+        .content-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 2rem;
             margin-top: 2rem;
             max-width: 1200px;
             margin: 2rem auto;
         }
 
-        .track-card {
+        .content-card {
             background: rgba(255,255,255,0.05);
             border-radius: 10px;
-            padding: 1rem;
+            padding: 2rem;
             transition: all 0.3s ease;
         }
 
-        .track-card:hover {
+        .content-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 5px 20px rgba(77, 238, 234, 0.2);
         }
 
-        .track-art {
-            width: 100%;
-            height: 200px;
-            background: #2a2a2a;
-            border-radius: 8px;
+        .content-card h3 {
+            color: var(--neon-blue);
             margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+
+        .content-card p {
+            margin-bottom: 1rem;
+        }
+
+        .stats-highlight {
+            font-size: 2rem;
+            color: var(--neon-pink);
+            margin: 1rem 0;
+            font-weight: bold;
         }
 
         footer {
@@ -408,7 +417,7 @@
                 <li>🌟 Creative freedom from your artist space</li>
                 <li>🎧 No algorithm blocking you from your fans</li>
             </ul>
-            <a href="#artist-signup" class="btn">Join as Artist</a>
+            <a href="#artist-signup" class="btn">Join the waiting list</a>
         </div>
 
         <div class="section">
@@ -432,35 +441,49 @@
                 </div>
             </div>
             <div class="invite-code">
-                <p>Have an invite code?</p>
+                <p>Have an Artist invite code?</p>
                 <input type="text" placeholder="Enter your invite code">
                 <button class="btn">Submit</button>
             </div>
         </div>
     </div>
 
-    <section class="featured-curation">
-        <h2>Featured Tracks</h2>
-        <div class="track-grid">
-            <div class="track-card">
-                <div class="track-art"></div>
-                <h3>Summer Nights</h3>
-                <p>by Electronic Dreams</p>
+    <section class="content-sections">
+        <div class="content-grid">
+            <div class="content-card">
+                <h3>Artist of the Week</h3>
+                <p>Meet Sarah Chen, an indie electronic artist who's redefining the boundaries of ambient music. Her latest EP "Digital Dreams" has captured the hearts of early supporters.</p>
+                <a href="#" class="btn">Discover More</a>
             </div>
-            <div class="track-card">
-                <div class="track-art"></div>
-                <h3>Urban Soul</h3>
-                <p>by Jazz Collective</p>
+
+            <div class="content-card">
+                <h3>Artist Stories</h3>
+                <p>From bedroom producer to festival headliner - follow the journey of artists who've built their careers on their own terms through direct fan support.</p>
+                <a href="#" class="btn">Read Stories</a>
             </div>
-            <div class="track-card">
-                <div class="track-art"></div>
-                <h3>Digital Dawn</h3>
-                <p>by Future Beats</p>
+
+            <div class="content-card">
+                <h3>Latest Blog Posts</h3>
+                <ul style="list-style: none;">
+                    <li>🎵 The Future of Music Ownership</li>
+                    <li>💡 How to Build a Sustainable Music Career</li>
+                    <li>🌟 Fan-Supported Success Stories</li>
+                </ul>
+                <a href="#" class="btn">View All Posts</a>
             </div>
-            <div class="track-card">
-                <div class="track-art"></div>
-                <h3>Midnight Drive</h3>
-                <p>by Synthwave Project</p>
+
+            <div class="content-card">
+                <h3>Fan Curated Tracks</h3>
+                <p>Discover hidden gems selected by our most active community members. New playlists updated weekly.</p>
+                <a href="#" class="btn">Listen Now</a>
+            </div>
+
+            <div class="content-card">
+                <h3>Why We're Different</h3>
+                <p>The current music industry is broken. Out of 11 million artists on Spotify, only 13,000 make a decent wage.</p>
+                <div class="stats-highlight">0.1%</div>
+                <p>That's the percentage of artists who can sustain themselves through traditional streaming. We're here to change that by connecting artists directly with their true fans.</p>
+                <a href="#" class="btn">Learn More</a>
             </div>
         </div>
     </section>
