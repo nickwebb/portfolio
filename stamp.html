@@ -51,7 +51,7 @@
             border-radius: 20px;
             cursor: pointer;
             transition: all 0.3s ease;
-            margin-left: auto; /* This pushes the button to the right */
+            margin: 1rem;
         }
 
         .login-btn:hover {
@@ -312,6 +312,75 @@
             font-weight: bold;
         }
 
+        .retro-section {
+            text-align: center;
+            padding: 2rem;
+            margin: 2rem auto;
+            max-width: 800px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            border: 2px solid var(--neon-pink);
+        }
+
+        .visitor-counter {
+            font-family: "VT323", monospace;
+            font-size: 2rem;
+            color: var(--neon-blue);
+            text-shadow: 0 0 10px var(--neon-blue);
+            margin: 1rem 0;
+        }
+
+        .construction-banner {
+            background: repeating-linear-gradient(
+                45deg,
+                var(--neon-pink),
+                var(--neon-pink) 10px,
+                var(--neon-pink) 10px,
+                var(--primary) 20px
+            );
+            padding: 1rem;
+            margin: 2rem 0;
+            text-align: center;
+            animation: scroll 20s linear infinite;
+            /* color: var(--secondary); */
+            font-weight: bold;
+        }
+
+        .webmaster-info {
+            font-family: "Courier New", monospace;
+            border: 1px dashed var(--neon-blue);
+            padding: 1rem;
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        .best-viewed {
+            font-size: 0.9rem;
+            color: var(--neon-pink);
+            margin: 1rem 0;
+            font-style: italic;
+        }
+
+        .guestbook-btn {
+            background: var(--neon-blue);
+            border: none;
+            padding: 0.5rem 1rem;
+            color: var(--dark);
+            font-weight: bold;
+            cursor: pointer;
+            margin: 1rem 0;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes scroll {
+            0% { background-position: 0 0; }
+            100% { background-position: 50px 50px; }
+        }
+
         footer {
             background: rgba(255,255,255,0.02);
             padding: 4rem 2rem;
@@ -397,6 +466,7 @@
         }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script>
         // Function to generate random color
@@ -429,6 +499,12 @@
 
         // Set random colors when page loads
         window.addEventListener('load', setRandomColorScheme);
+
+        // Visitor counter
+        let visitorCount = Math.floor(Math.random() * 100000) + 50000;
+        window.onload = function() {
+            document.getElementById('visitor-count').textContent = visitorCount.toString().padStart(8, '0');
+        }
     </script>
 </head>
 <body>
@@ -524,6 +600,27 @@
             </div>
         </div>
     </section>
+
+    <!-- Retro Web Elements -->
+    <div class="retro-section">
+        <div class="construction-banner">
+            🚧 UNDER CONSTRUCTION - NEW FEATURES COMING SOON! 🚧
+        </div>
+        
+        <div class="visitor-counter">
+            <span>👥 Visitors: </span>
+            <span id="visitor-count">00000000</span>
+        </div>
+        
+        <div class="webmaster-info">
+            <p>📧 Contact the Webmaster: webmaster@stamp.com</p>
+            <p>Last updated: <span style="color: var(--neon-pink);">11.28.1999</span></p>
+        </div>
+        
+        <div class="best-viewed">
+            🖥️ Best viewed in Netscape Navigator 4.0 at 800x600 resolution
+        </div>
+    </div>
 
     <footer>
         <div class="footer-content">
