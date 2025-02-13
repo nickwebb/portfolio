@@ -333,17 +333,22 @@
         .construction-banner {
             background: repeating-linear-gradient(
                 45deg,
-                var(--neon-pink),
-                var(--neon-pink) 10px,
-                var(--neon-pink) 10px,
-                var(--primary) 20px
+                #FFE5E5,
+                #FFE5E5 10px,
+                #FFF 10px,
+                #FFF 20px
             );
             padding: 1rem;
-            margin: 2rem 0;
+            margin-top: 3rem;
             text-align: center;
             animation: scroll 20s linear infinite;
-            /* color: var(--secondary); */
+            color: #000;
             font-weight: bold;
+            text-shadow: 
+                -1px -1px 0 #FFF,
+                1px -1px 0 #FFF,
+                -1px 1px 0 #FFF,
+                1px 1px 0 #FFF;
         }
 
         .webmaster-info {
@@ -561,6 +566,10 @@
         </div>
     </div>
 
+    <div class="construction-banner">
+        🚧 UNDER CONSTRUCTION - NEW FEATURES COMING SOON! 🚧
+    </div>
+
     <section class="content-sections">
         <div class="content-grid">
             <div class="content-card">
@@ -603,9 +612,7 @@
 
     <!-- Retro Web Elements -->
     <div class="retro-section">
-        <div class="construction-banner">
-            🚧 UNDER CONSTRUCTION - NEW FEATURES COMING SOON! 🚧
-        </div>
+        
         
         <div class="visitor-counter">
             <span>👥 Visitors: </span>
