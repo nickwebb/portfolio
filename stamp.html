@@ -13,6 +13,7 @@
         }
 
         :root {
+            /* These will be overridden by JavaScript */
             --primary: #6B47FF;
             --secondary: #FF4785;
             --dark: #0A0A0A;
@@ -25,18 +26,21 @@
             background-color: var(--dark);
             color: var(--light);
             line-height: 1.6;
-        }
+        }˚
 
         .top-header {
             background: rgba(255,255,255,0.05);
-            padding: 0.5rem 2rem;
+            padding: 1rem 2rem;
             display: flex;
             justify-content: flex-end;
             align-items: center;
             backdrop-filter: blur(10px);
             position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
             z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
         .login-btn {
@@ -47,6 +51,7 @@
             border-radius: 20px;
             cursor: pointer;
             transition: all 0.3s ease;
+            margin-left: auto; /* This pushes the button to the right */
         }
 
         .login-btn:hover {
@@ -89,7 +94,7 @@
         }
 
         .logo {
-            font-size: 6rem;
+            font-size: 8rem; /* Increased from 6rem to 8rem */
             font-weight: 900;
             margin-bottom: 2rem;
             background: linear-gradient(45deg, var(--neon-pink), var(--neon-blue));
@@ -387,12 +392,44 @@
             }
 
             .logo {
-                font-size: 4rem;
+                font-size: 6rem; /* Adjusted for mobile */
             }
         }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        // Function to generate random color
+        function randomColor() {
+            return '#' + Math.floor(Math.random()*16777215).toString(16);
+        }
+
+        // Function to generate a neon-like color (bright and saturated)
+        function randomNeonColor() {
+            const hue = Math.random() * 360;
+            return `hsl(${hue}, 100%, 65%)`;
+        }
+
+        // Function to set random color scheme
+        function setRandomColorScheme() {
+            const root = document.documentElement;
+            
+            // Generate main colors
+            const primary = randomNeonColor();
+            const secondary = randomNeonColor();
+            const neonPink = randomNeonColor();
+            const neonBlue = randomNeonColor();
+            
+            // Set the CSS variables
+            root.style.setProperty('--primary', primary);
+            root.style.setProperty('--secondary', secondary);
+            root.style.setProperty('--neon-pink', neonPink);
+            root.style.setProperty('--neon-blue', neonBlue);
+        }
+
+        // Set random colors when page loads
+        window.addEventListener('load', setRandomColorScheme);
+    </script>
 </head>
 <body>
     <header class="top-header">
