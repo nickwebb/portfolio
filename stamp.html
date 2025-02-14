@@ -498,6 +498,14 @@
             // Remove any pre-existing retro gifs and containers
             document.querySelectorAll('.nineties-gif, .nineties-gif-container').forEach(el => el.remove());
             
+            // Toggle the "90s mode ACTIVATED" matrix banner in the header
+            const matrixBanner = document.getElementById('matrix-banner');
+            if (body.classList.contains('nineties-mode')) {
+                matrixBanner.style.display = 'block';
+            } else {
+                matrixBanner.style.display = 'none';
+            }
+            
             /* if(body.classList.contains('nineties-mode')) {
                 // Instead of inserting gifs into the sections (which broke layout), we create an absolutely positioned container in the hero
                 const hero = document.querySelector('.hero');
@@ -610,6 +618,9 @@
     <header class="top-header">
         <button class="login-btn">Login</button>
         <button onclick="toggle90sMode()" style="background: none; border: none; cursor: pointer; font-size: 0.5rem;">💾</button>
+        <div id="matrix-banner" style="display: none; position: absolute; left: 50%; top: 10px; transform: translateX(-50%); color: #39FF14; font-family: 'VT323', monospace; font-size: 1rem;">
+            90s mode ACTIVATED - Welcome to the Matrix
+        </div>
     </header>
 
     <div class="hero">
