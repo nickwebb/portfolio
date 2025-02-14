@@ -26,7 +26,7 @@
             background-color: var(--dark);
             color: var(--light);
             line-height: 1.6;
-        }˚
+        }
 
         .top-header {
             background: rgba(255,255,255,0.05);
@@ -94,7 +94,7 @@
         }
 
         .logo {
-            font-size: 8rem; /* Increased from 6rem to 8rem */
+            font-size: 8rem;
             font-weight: 900;
             margin-bottom: 2rem;
             background: linear-gradient(45deg, var(--neon-pink), var(--neon-blue));
@@ -330,27 +330,6 @@
             margin: 1rem 0;
         }
 
-/*         .construction-banner {
-            background: repeating-linear-gradient(
-                45deg,
-                #FFE5E5,
-                #FFE5E5 10px,
-                #FFF 10px,
-                #FFF 20px
-            );
-            padding: 1rem;
-            margin-top: 3rem;
-            text-align: center;
-            animation: scroll 20s linear infinite;
-            color: #000;
-            font-weight: bold;
-            text-shadow: 
-                -1px -1px 0 #FFF,
-                1px -1px 0 #FFF,
-                -1px 1px 0 #FFF,
-                1px 1px 0 #FFF;
-        } */
-
         .webmaster-info {
             font-family: "Courier New", monospace;
             border: 1px dashed var(--neon-blue);
@@ -466,7 +445,7 @@
             }
 
             .logo {
-                font-size: 6rem; /* Adjusted for mobile */
+                font-size: 6rem;
             }
         }
     </style>
@@ -510,11 +489,127 @@
         window.onload = function() {
             document.getElementById('visitor-count').textContent = visitorCount.toString().padStart(8, '0');
         }
+
+        // Function to toggle 90s mode with improved retro styling and non-intrusive gif placement
+        function toggle90sMode() {
+            const body = document.body;
+            body.classList.toggle('nineties-mode');
+            
+            // Remove any pre-existing retro gifs and containers
+            document.querySelectorAll('.nineties-gif, .nineties-gif-container').forEach(el => el.remove());
+            
+            /* if(body.classList.contains('nineties-mode')) {
+                // Instead of inserting gifs into the sections (which broke layout), we create an absolutely positioned container in the hero
+                const hero = document.querySelector('.hero');
+                const gifContainer = document.createElement('div');
+                gifContainer.className = 'nineties-gif-container';
+
+                // Add construction gif
+                const constructionGif = document.createElement('img');
+                constructionGif.src = 'https://media.giphy.com/media/5xaOcLGvzHxDKjufnLW/giphy.gif';
+                constructionGif.className = 'nineties-gif';
+                gifContainer.appendChild(constructionGif);
+                
+                // Add spinning globe gif
+                const globeGif = document.createElement('img');
+                globeGif.src = 'https://media.giphy.com/media/xT9IgG50Fb7Mi0prBC/giphy.gif';
+                globeGif.className = 'nineties-gif';
+                gifContainer.appendChild(globeGif);
+                
+                // Add "NEW!" animated gif
+                const newGif = document.createElement('img');
+                newGif.src = 'https://media.giphy.com/media/l0HlOvJ7yaacpuSas/giphy.gif';
+                newGif.className = 'nineties-gif';
+                gifContainer.appendChild(newGif);
+                
+                hero.appendChild(gifContainer);
+            } */
+        }
     </script>
+    <style>
+        .nineties-mode {
+            font-family: "Comic Sans MS", cursive, sans-serif !important;
+            /* background: #000 url('https://media.giphy.com/media/5xaOcLGvzHxDKjufnLW/giphy.gif') repeat !important; */
+            color: #39FF14 !important;
+        }
+
+        .nineties-mode .top-header {
+            background: #0000CD !important;
+            border-bottom: 3px ridge #FFD700 !important;
+        }
+
+        .nineties-mode .login-btn {
+            background: #FF69B4 !important;
+            color: #FFFF00 !important;
+            border: 3px outset #FFD700 !important;
+            font-weight: bold !important;
+            text-shadow: 2px 2px #000000 !important;
+        }
+
+        .nineties-mode .hero {
+            background: #000 url('https://media.giphy.com/media/26BRrSvJUa0crqw4E/giphy.gif') repeat-x bottom !important;
+        }
+
+        .nineties-mode .section {
+            background: #00008B !important;
+            color: #39FF14 !important;
+            border: 3px dotted #FFD700 !important;
+        }
+
+        .nineties-mode .btn {
+            background: #FF69B4 !important;
+            color: #FFFF00 !important;
+            border: 3px outset #FFD700 !important;
+        }
+
+        .nineties-mode .footer-content {
+            background: #00008B !important;
+            border-top: 3px ridge #FFD700 !important;
+        }
+
+        .nineties-mode .logo {
+            color: #FF69B4 !important;
+            text-shadow: 2px 2px #FFFF00 !important;
+            -webkit-text-fill-color: #FF69B4 !important;
+        }
+
+        .nineties-mode h1, .nineties-mode h2 {
+            font-family: "Comic Sans MS", cursive, sans-serif !important;
+            text-shadow: 3px 3px #FFD700 !important;
+        }
+
+        .nineties-mode marquee {
+            color: #39FF14 !important;
+        }
+
+        .nineties-mode a {
+            color: #39FF14 !important;
+            text-decoration: underline !important;
+        }
+
+        .nineties-mode a:hover {
+            color: #FF69B4 !important;
+        }
+
+        .nineties-gif {
+            margin: 10px;
+            max-width: 100px;
+        }
+
+        .nineties-gif-container {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            display: flex;
+            gap: 10px;
+            z-index: 1001;
+        }
+    </style>
 </head>
 <body>
     <header class="top-header">
         <button class="login-btn">Login</button>
+        <button onclick="toggle90sMode()" style="background: none; border: none; cursor: pointer; font-size: 0.5rem;">💾</button>
     </header>
 
     <div class="hero">
@@ -617,14 +712,7 @@
     </section>
 
 <!--     <!-- Retro Web Elements -->
-    <div class="retro-section">
-
-        
-        <!-- <div class="visitor-counter">
-            <span>👥 Visitors: </span>
-            <span id="visitor-count">00000000</span>
-        </div> -->
-        
+    <div class="retro-section" style="display: none;">
         <div class="webmaster-info">
             <p>📧 Contact the Webmaster: webmaster@stamp.com</p>
             <p>Last updated: <span style="color: var(--neon-pink);">11.28.1999</span></p>
@@ -633,7 +721,27 @@
         <div class="best-viewed">
             🖥️ Best viewed in Netscape Navigator 4.0 at 800x600 resolution
         </div>
-</div> 
+    </div>
+    <script>
+      (function(){
+          // Function to update visibility of the retro section based on 90s mode
+          function updateRetroVisibility() {
+              var retroSection = document.querySelector('.retro-section');
+              if (document.body.classList.contains('nineties-mode')) {
+                  retroSection.style.display = 'block';
+              } else {
+                  retroSection.style.display = 'none';
+              }
+          }
+          
+          // Initial check on page load
+          updateRetroVisibility();
+          
+          // Observe changes to the body's class attributes to handle toggling
+          var observer = new MutationObserver(updateRetroVisibility);
+          observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      })();
+    </script>
 
     <footer>
         <div class="footer-content">
