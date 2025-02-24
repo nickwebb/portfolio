@@ -1,0 +1,71 @@
+.nineties-mode {
+    font-family: "Comic Sans MS", cursive, sans-serif !important;
+    color: #39FF14 !important;
+}
+
+.nineties-mode .top-header {
+    background: #0000CD !important;
+    border-bottom: 3px ridge #FFD700 !important;
+}
+
+.nineties-mode .hero {
+    background: #000 url('https://media.giphy.com/media/26BRrSvJUa0crqw4E/giphy.gif') repeat-x bottom !important;
+}
+
+.nineties-mode .section {
+    background: #00008B !important;
+    color: #39FF14 !important;
+    border: 3px dotted #FFD700 !important;
+}
+
+.nineties-mode .btn {
+    background: #FF69B4 !important;
+    color: #FFFF00 !important;
+    border: 3px outset #FFD700 !important;
+}
+
+.nineties-mode .footer-content {
+    background: #00008B !important;
+    border-top: 3px ridge #FFD700 !important;
+}
+
+.nineties-mode .logo {
+    color: #FF69B4 !important;
+    text-shadow: 2px 2px #FFFF00 !important;
+    -webkit-text-fill-color: #FF69B4 !important;
+}
+
+.nineties-mode h1, 
+.nineties-mode h2 {
+    font-family: "Comic Sans MS", cursive, sans-serif !important;
+    text-shadow: 3px 3px #FFD700 !important;
+}
+
+.nineties-mode marquee {
+    color: #39FF14 !important;
+}
+
+.nineties-mode a {
+    color: #39FF14 !important;
+    text-decoration: underline !important;
+}
+
+.nineties-mode a:hover {
+    color: #FF69B4 !important;
+}
+
+.nineties-gif {
+    margin: 10px;
+    max-width: 100px;
+}
+
+.nineties-gif-container {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    display: flex;
+    gap: 10px;
+    z-index: 1001;
+}
+
+/* ... rest of the retro styles ... */ 
