@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Test rules for debugging */
+.test-css-processing {
+  background-color: red !important;
+}
+
+@layer base {
+  .test-tailwind-layer {
+    background-color: blue !important;
+  }
+
+  html {
+    @apply h-full bg-black;
+  }
+  
+  body {
+    @apply antialiased text-white min-h-screen;
+  }
+
+  .dark {
+    color-scheme: dark;
+  }
+}
+
+:root {
+  --purple-gradient: linear-gradient(135deg, #9333EA 0%, #4F46E5 100%);
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 0, 0, 0;
+  --background-end-rgb: 0, 0, 0;
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-white/5 backdrop-blur-lg border border-white/10;
+  }
+  
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400;
+  }
+  
+  .purple-gradient {
+    background: var(--purple-gradient);
+  }
+
+  .bg-gradient-custom {
+    @apply bg-gradient-to-b from-neutral-900 to-black;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--background-start-rgb)),
+    rgb(var(--background-end-rgb))
+  );
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Safe Area Padding for Mobile */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 1rem);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+  .glass-panel {
+    @apply rounded-none;
+  }
+}
