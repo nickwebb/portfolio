@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FretFlow — Practice Lab for Guitarists</title>
+  <link rel="stylesheet" href="gpl/styles.css" />
+</head>
+<body>
+  <div class="bg-orbit"></div>
+  <div class="bg-grid"></div>
+
+  <header class="hero compact">
+    <nav class="topbar compact">
+      <div class="brand">
+        <div class="logo">GPL</div>
+        <div>
+          <div class="brand-title glow">Guitar Practice Lab</div>
+          <div class="brand-sub">Riff. Loop. Level up.</div>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section id="practice" class="section">
+      <div class="section-title compact-title"></div>
+
+      <div class="card builder">
+        <div class="card-title">Progression Builder</div>
+        <div class="generator">
+          <div class="sub-title">Generate Progression</div>
+          <div class="control-row">
+            <label>
+              Length
+              <select id="genLength">
+                <option value="4">4 chords</option>
+                <option value="6">6 chords</option>
+                <option value="8">8 chords</option>
+              </select>
+            </label>
+            <label>
+              Spice Level
+              <select id="genSpice">
+                <option value="none">None</option>
+                <option value="light" selected>Light</option>
+                <option value="bold">Bold</option>
+              </select>
+            </label>
+            <label>
+              Rhythm Feel
+              <select id="genRhythm">
+                <option value="steady">All 4 beats</option>
+                <option value="mixed">Mixed (2–4 beats)</option>
+              </select>
+            </label>
+          </div>
+          <button id="generateProg" class="btn primary play">Generate Chord Progression</button>
+        </div>
+
+        <details class="details builder-details">
+          <summary>Show more chord progression controls</summary>
+          <div class="control-row">
+            <label>
+              Key
+              <select id="keySelect">
+                <option value="random">Random</option>
+              </select>
+            </label>
+            <label>
+              Mode
+              <select id="modeSelect">
+                <option value="random">Random</option>
+                <option value="major">Major</option>
+                <option value="minor">Minor</option>
+              </select>
+            </label>
+            <label>
+              Backing Vibe
+              <select id="styleSelect">
+                <option value="random">Random</option>
+                <option value="clean">Clean Pop</option>
+                <option value="neosoul">Neo-Soul</option>
+                <option value="jazz">Jazz Club</option>
+                <option value="cinematic">Cinematic</option>
+              </select>
+            </label>
+            <label>
+              Recent Pop/Rock
+              <select id="progressionSelect">
+                <option value="">Select a progression</option>
+              </select>
+            </label>
+          </div>
+          <div class="note">Backing vibe sets the tone, rhythm feel, and drum pattern.</div>
+
+          <div class="progression-tools">
+            <div>
+              <div class="sub-title">Edit Progression</div>
+              <div class="progression-input">
+                <input id="progInput" type="text" placeholder="Type: I vi IV V" />
+                <button id="applyProg" class="btn ghost small">Apply</button>
+              </div>
+              <div class="note">Tip: add durations with `:2` (e.g., `V:2`) for 2 beats. Default is 1 beat.</div>
+              <div class="spicy-row">
+                <div>
+                  <div class="spicy-title">Spicy Suggestion</div>
+                  <div id="spicySuggestion" class="spicy-pill">—</div>
+                </div>
+                <div class="spicy-actions">
+                  <button id="addSpicy" class="btn ghost small">Add</button>
+                  <button id="refreshSpicy" class="btn ghost small">New</button>
+                </div>
+              </div>
+              <div class="progression-actions">
+                <button id="clearProg" class="btn ghost small">Clear</button>
+                <button id="shuffleProg" class="btn ghost small">Swap Order</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="control-row">
+            <label>
+              Chord Texture
+              <select id="textureSelect">
+                <option value="block">Block Chords</option>
+                <option value="arp">Arpeggiated</option>
+                <option value="pulse">Pulse Comp</option>
+              </select>
+            </label>
+            <label>
+              Chord Size
+              <select id="sizeSelect">
+                <option value="triad">Triads</option>
+                <option value="seventh">Sevenths</option>
+              </select>
+            </label>
+            <label>
+              Chord Rhythm
+              <select id="rhythmSelect">
+                <option value="whole">Whole Notes</option>
+                <option value="halves">Half Notes</option>
+                <option value="syncopated">Syncopated</option>
+                <option value="offbeat">Offbeat Pulse</option>
+                <option value="tresillo">Tresillo</option>
+              </select>
+            </label>
+            <label>
+              Tone Warmth
+              <input id="toneSlider" type="range" min="400" max="2400" value="1200" />
+            </label>
+            <label>
+              Note Hold
+              <input id="holdSlider" type="range" min="0.6" max="2.5" step="0.1" value="1.4" />
+            </label>
+            <label class="toggle">
+              Drums
+              <input id="drumToggle" type="checkbox" checked />
+              <span>Enabled</span>
+            </label>
+          </div>
+
+          <div class="note">Warm synth backing + optional drums to keep the focus on phrasing.</div>
+        </details>
+      </div>
+
+      <div class="grid practice-grid">
+        <div class="card practice-hub">
+          <div class="progression-block">
+            <div class="key-row">
+              <div class="key-banner">Key: <span id="currentKey">C Major</span></div>
+              <div class="tempo-pill">
+                <div class="tempo-label">Tempo</div>
+                <div class="tempo-wrap funky">
+                  <input id="tempo" type="range" min="50" max="200" value="100" />
+                  <span id="tempoLabel">100 BPM</span>
+                </div>
+              </div>
+            </div>
+            <div class="sub-title">Progression</div>
+            <div id="progression" class="progression large"></div>
+            <div class="progression-actions">
+              <button id="addChordSlot" class="btn ghost small">Add Chord Slot</button>
+              <button id="addFourSlots" class="btn ghost small">+4 Slots</button>
+            </div>
+          </div>
+          <div class="chord-editor">
+            <div class="editor-header">Selected Chord</div>
+            <div id="selectedChordLabel" class="selected-chord">Select a chord</div>
+            <div class="editor-row">
+              <div class="editor-label">Extensions</div>
+              <div id="extensionButtons" class="editor-buttons"></div>
+            </div>
+            <div class="editor-row">
+              <div class="editor-label">Duration (beats)</div>
+              <div id="beatButtons" class="editor-buttons"></div>
+            </div>
+          </div>
+
+          <div class="fretboard-block">
+            <div class="fretboard-head">
+              <div>
+                <div class="sub-title">Fretboard Map</div>
+              </div>
+              <label class="toggle compact">
+                Show fretboard
+                <input id="fretToggle" type="checkbox" checked />
+              </label>
+            </div>
+            <div class="fretboard-wrapper">
+              <div id="fretboardMarkers" class="fretboard-markers"></div>
+              <div id="fretboardGrid" class="fretboard"></div>
+            </div>
+            <div class="playback under">
+              <button id="playBtn" class="btn primary play">Play</button>
+              <button id="stopBtn" class="btn ghost stop">Stop</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card palette">
+          <div class="palette-head">
+            <div class="card-title">Chord Palette</div>
+          </div>
+          <div class="note palette-note">Drag into progression • Tap to audition</div>
+          <div class="palette-group diatonic">
+            <div class="sub-title">Diatonic</div>
+            <div id="diatonicChords" class="chord-pool"></div>
+          </div>
+          <div class="palette-group extensions">
+            <div class="sub-title">With Extensions</div>
+            <div id="extendedChords" class="chord-pool"></div>
+          </div>
+          <div class="palette-group borrowed">
+            <div class="sub-title">Borrowed / Color</div>
+            <div id="borrowedChords" class="chord-pool"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-meta">Total practice minutes: <span id="footerMinutes">0</span></div>
+    <button id="resetMinutes" class="btn ghost small">Reset practice minutes</button>
+  </footer>
+
+  <script src="gpl/app.js"></script>
+</body>
+</html>
