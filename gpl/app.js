@@ -25,7 +25,6 @@ const applyProg = document.getElementById("applyProg");
 const clearProg = document.getElementById("clearProg");
 const shuffleProg = document.getElementById("shuffleProg");
 const playBtn = document.getElementById("playBtn");
-const stopBtn = document.getElementById("stopBtn");
 const styleSelect = document.getElementById("styleSelect");
 const textureSelect = document.getElementById("textureSelect");
 const sizeSelect = document.getElementById("sizeSelect");
@@ -83,6 +82,7 @@ const addFourSlots = document.getElementById("addFourSlots");
 const footerMinutes = document.getElementById("footerMinutes");
 const resetMinutes = document.getElementById("resetMinutes");
 const currentKey = document.getElementById("currentKey");
+const keyBanner = document.querySelector(".key-banner");
 
 const scrollButtons = document.querySelectorAll("[data-scroll]");
 
@@ -103,12 +103,16 @@ const state = {
   drumBus: null,
   noiseBuffer: null,
   isPlaying: false,
+  isPaused: false,
   currentChord: 0,
   uiChord: 0,
   nextTime: 0,
   timerId: null,
   sessionTimerId: null,
   sessionStartTime: null,
+  pauseStartTime: null,
+  pausedTotalMs: 0,
+  sessionLoggedMinutes: 0,
   uiTimeouts: [],
   currentChordNotes: new Set(),
   currentChordRoot: null,
@@ -146,12 +150,18 @@ const triads = {
 const RHYTHMS = {
   whole: [0],
   halves: [0, 2],
+  quarters: [0, 1, 2, 3],
+  eighths: [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5],
   syncopated: [0, 1.5, 2.5, 3.5],
   offbeat: [0.5, 1.5, 2.5, 3.5],
-  tresillo: [0, 1.5, 3]
+  push: [0, 1.75, 2.75, 3.5],
+  tresillo: [0, 1.5, 3],
+  habanera: [0, 1.5, 2, 3],
+  clave: [0, 1.5, 2.5, 3],
+  sparse: [0, 2.5]
 };
 
-const EXTENSION_OPTIONS = ["7", "9", "11", "13", "sus4", "add9"];
+const EXTENSION_OPTIONS = ["maj7", "7", "9", "11", "13", "sus4", "add9"];
 
 const STYLE_PRESETS = {
   clean: { texture: "block", rhythm: "whole", drums: true, filter: 1200 },
@@ -220,6 +230,7 @@ function init() {
   initProgressionLibrary();
   buildFretMarkers();
   updateChordEditor();
+  updatePlayButton();
 
   keySelect.addEventListener("change", () => {
     state.key = keySelect.value;
@@ -285,8 +296,7 @@ function init() {
 
   refreshSpicy.addEventListener("click", updateSpicySuggestion);
 
-  playBtn.addEventListener("click", startPlayback);
-  stopBtn.addEventListener("click", stopPlayback);
+  playBtn.addEventListener("click", togglePlayback);
 
   styleSelect.addEventListener("change", () => {
     setStyle(styleSelect.value);
@@ -541,6 +551,11 @@ function updateKeyBanner() {
   if (!currentKey) return;
   const modeLabel = state.mode === "major" ? "Major" : "Minor";
   currentKey.textContent = `${state.key} ${modeLabel}`;
+  if (keyBanner) {
+    keyBanner.classList.remove("pulse");
+    void keyBanner.offsetWidth;
+    keyBanner.classList.add("pulse");
+  }
 }
 
 function updateSpicySuggestion() {
@@ -625,6 +640,25 @@ function generateProgression() {
   const chosenStyle = styleSelect?.value === "random" ? styleOptions[Math.floor(Math.random() * styleOptions.length)] : styleSelect?.value || "clean";
   setStyle(chosenStyle);
 
+  const rhythmMap = {
+    pulse: "quarters",
+    drive: "eighths",
+    syncopated: "syncopated",
+    offbeat: "offbeat",
+    push: "push",
+    tresillo: "tresillo",
+    habanera: "habanera",
+    clave: "clave",
+    sparse: "sparse"
+  };
+  if (rhythmMap[rhythm]) {
+    state.rhythm = rhythmMap[rhythm];
+    if (rhythmSelect) rhythmSelect.value = state.rhythm;
+  } else if (rhythm === "steady") {
+    state.rhythm = "whole";
+    if (rhythmSelect) rhythmSelect.value = state.rhythm;
+  }
+
   buildChordPalette();
   updateScaleNotes();
   buildFretboard();
@@ -643,8 +677,23 @@ function generateProgression() {
     picks.push(token);
   }
 
+  const tonic = state.mode === "major" ? "I" : "i";
+  if (picks.length > 0) {
+    if (Math.random() < 0.5) picks[0] = tonic;
+    else picks[picks.length - 1] = tonic;
+  }
+
   const items = picks.map((token) => {
-    const beats = rhythm === "mixed" && Math.random() < 0.35 ? 2 + Math.floor(Math.random() * 3) : 4;
+    let beats = 4;
+    if (rhythm === "mixed") {
+      const options = [1, 2, 3, 4];
+      beats = options[Math.floor(Math.random() * options.length)];
+    } else if (rhythm === "short") {
+      beats = Math.random() < 0.6 ? 1 : 2;
+    } else if (rhythm === "long") {
+      const options = [4, 6, 8];
+      beats = options[Math.floor(Math.random() * options.length)];
+    }
     return createChordItem(token, beats);
   });
 
@@ -689,7 +738,7 @@ function buildDiatonicChords() {
     const root = noteAt(state.key, interval);
     const quality = qualities[idx];
     const name = formatChordName(root, quality, state.chordSize);
-    const item = createChordItem(degrees[idx], 1);
+    const item = createChordItem(degrees[idx], 4);
     const button = createPaletteButton(`${degrees[idx]} • ${name}`, item);
     diatonicChords.appendChild(button);
   });
@@ -703,7 +752,7 @@ function buildExtendedChords() {
     const quality = qualities[idx];
     const exts = quality === "maj" ? ["7", "9"] : ["7", "9"];
     exts.forEach((ext) => {
-      const item = createChordItem(degree, 1, null, [ext]);
+      const item = createChordItem(degree, 4, null, [ext]);
       const chord = chordFromItem(item);
       const label = `${degree}${ext} • ${buildChordName(formatChordName(chord.root, quality, state.chordSize), [ext])}`;
       const button = createPaletteButton(label, item);
@@ -717,7 +766,7 @@ function buildBorrowedChords() {
   borrowedChords.innerHTML = "";
   const suggestions = getSpicySuggestions();
   suggestions.forEach((pick) => {
-    const item = createChordItem(pick.token, 1, pick.roman);
+    const item = createChordItem(pick.token, 4, pick.roman);
     const label = `${pick.roman} • ${pick.token}`;
     const button = createPaletteButton(label, item);
     borrowedChords.appendChild(button);
@@ -1009,6 +1058,7 @@ function applyExtensions(intervals, quality, exts = []) {
     set.add(5);
   }
   const addSeventh = (value) => set.add(value);
+  if (exts.includes("maj7")) addSeventh(11);
   if (exts.includes("7")) {
     if (quality === "maj") addSeventh(11);
     else if (quality === "min") addSeventh(10);
@@ -1078,6 +1128,7 @@ function startPlayback() {
   if (!state.audioCtx) initAudio();
 
   state.isPlaying = true;
+  state.isPaused = false;
   state.currentChord = 0;
   state.uiChord = 0;
   state.selectedChord = 0;
@@ -1092,6 +1143,51 @@ function startPlayback() {
 
   state.timerId = setInterval(schedulePlayback, 25);
   if (!state.sessionTimerId) startSession();
+
+  updatePlayButton();
+}
+
+function pausePlayback() {
+  if (!state.isPlaying || state.isPaused) return;
+  state.isPaused = true;
+  state.pauseStartTime = Date.now();
+  if (state.timerId) {
+    clearInterval(state.timerId);
+    state.timerId = null;
+  }
+  state.uiTimeouts.forEach((id) => clearTimeout(id));
+  state.uiTimeouts = [];
+  updatePlayButton();
+}
+
+function resumePlayback() {
+  if (!state.isPlaying || !state.isPaused) return;
+  state.isPaused = false;
+  if (state.pauseStartTime) {
+    state.pausedTotalMs += Date.now() - state.pauseStartTime;
+    state.pauseStartTime = null;
+  }
+  state.nextTime = state.audioCtx.currentTime + 0.05;
+  state.timerId = setInterval(schedulePlayback, 25);
+  updatePlayButton();
+}
+
+function togglePlayback() {
+  if (!state.isPlaying) {
+    startPlayback();
+    return;
+  }
+  if (state.isPaused) resumePlayback();
+  else pausePlayback();
+}
+
+function updatePlayButton() {
+  if (!playBtn) return;
+  if (!state.isPlaying) {
+    playBtn.textContent = "Play";
+    return;
+  }
+  playBtn.textContent = state.isPaused ? "Play" : "Pause";
 }
 
 function schedulePlayback() {
@@ -1224,23 +1320,6 @@ function playHat(time) {
   noise.stop(time + 0.1);
 }
 
-function stopPlayback() {
-  state.isPlaying = false;
-  if (state.timerId) {
-    clearInterval(state.timerId);
-    state.timerId = null;
-  }
-  state.uiTimeouts.forEach((id) => clearTimeout(id));
-  state.uiTimeouts = [];
-  state.currentChordNotes = new Set();
-  state.currentChordRoot = null;
-  if (nowChord) nowChord.textContent = "—";
-  if (nowDetails) nowDetails.textContent = "Playback stopped.";
-  renderProgression();
-  buildFretboard();
-  if (state.sessionTimerId) stopSession();
-}
-
 function scheduleUiUpdate(item, chord, time, index) {
   const delay = Math.max(0, (time - state.audioCtx.currentTime) * 1000);
   const timeout = setTimeout(() => {
@@ -1352,25 +1431,33 @@ function getHighlightNotes() {
 function startSession() {
   if (state.sessionTimerId) return;
   state.sessionStartTime = Date.now();
+  state.pausedTotalMs = 0;
+  state.pauseStartTime = null;
+  state.sessionLoggedMinutes = 0;
+  bumpSessionCounters();
   state.sessionTimerId = setInterval(updateSessionTimer, 1000);
-}
-
-function stopSession() {
-  if (!state.sessionTimerId) return;
-  clearInterval(state.sessionTimerId);
-  state.sessionTimerId = null;
-  const minutes = Math.max(1, Math.round((Date.now() - state.sessionStartTime) / 60000));
-  logSession(minutes);
-  state.sessionStartTime = null;
-  if (sessionTimer) sessionTimer.textContent = "00:00";
 }
 
 function updateSessionTimer() {
   if (!sessionTimer) return;
-  const elapsed = Math.floor((Date.now() - state.sessionStartTime) / 1000);
+  const now = Date.now();
+  const paused = state.pausedTotalMs + (state.isPaused && state.pauseStartTime ? now - state.pauseStartTime : 0);
+  const elapsed = Math.floor((now - state.sessionStartTime - paused) / 1000);
   const minutes = String(Math.floor(elapsed / 60)).padStart(2, "0");
   const seconds = String(elapsed % 60).padStart(2, "0");
   sessionTimer.textContent = `${minutes}:${seconds}`;
+
+  const elapsedMinutes = Math.floor(elapsed / 60);
+  if (elapsedMinutes > state.sessionLoggedMinutes) {
+    const diff = elapsedMinutes - state.sessionLoggedMinutes;
+    state.sessionLoggedMinutes = elapsedMinutes;
+    const data = JSON.parse(localStorage.getItem("fretflow_progress") || "{}");
+    const totalMinutes = (data.totalMinutes || 0) + diff;
+    const updated = { ...data, totalMinutes };
+    localStorage.setItem("fretflow_progress", JSON.stringify(updated));
+    if (totalMinutesEl) totalMinutesEl.textContent = totalMinutes;
+    if (footerMinutes) footerMinutes.textContent = totalMinutes;
+  }
 }
 
 function loadProgress() {
@@ -1381,12 +1468,10 @@ function loadProgress() {
   if (footerMinutes) footerMinutes.textContent = data.totalMinutes || 0;
 }
 
-function logSession(minutes) {
+function bumpSessionCounters() {
   const data = JSON.parse(localStorage.getItem("fretflow_progress") || "{}");
   const today = new Date().toDateString();
   const lastDate = data.lastDate;
-  const sessions = (data.sessions || 0) + 1;
-  const totalMinutes = (data.totalMinutes || 0) + minutes;
   let streak = data.streak || 0;
   if (lastDate !== today) {
     const yesterday = new Date();
@@ -1395,7 +1480,8 @@ function logSession(minutes) {
     else streak = 1;
   }
 
-  const updated = { sessions, totalMinutes, streak, lastDate: today };
+  const sessions = (data.sessions || 0) + 1;
+  const updated = { ...data, sessions, streak, lastDate: today };
   localStorage.setItem("fretflow_progress", JSON.stringify(updated));
   loadProgress();
 }

@@ -13,10 +13,8 @@
   <header class="hero compact">
     <nav class="topbar compact">
       <div class="brand">
-        <div class="logo">GPL</div>
         <div>
-          <div class="brand-title glow">Guitar Practice Lab</div>
-          <div class="brand-sub">Riff. Loop. Level up.</div>
+          <div class="brand-title glow">GUITAR PRACTICE LAB</div>
         </div>
       </div>
     </nav>
@@ -27,35 +25,47 @@
       <div class="section-title compact-title"></div>
 
       <div class="card builder">
-        <div class="card-title">Progression Builder</div>
+        <div class="card-title">Chord Progression</div>
         <div class="generator">
-          <div class="sub-title">Generate Progression</div>
-          <div class="control-row">
-            <label>
-              Length
-              <select id="genLength">
-                <option value="4">4 chords</option>
-                <option value="6">6 chords</option>
-                <option value="8">8 chords</option>
-              </select>
-            </label>
-            <label>
-              Spice Level
-              <select id="genSpice">
-                <option value="none">None</option>
-                <option value="light" selected>Light</option>
-                <option value="bold">Bold</option>
-              </select>
-            </label>
-            <label>
-              Rhythm Feel
-              <select id="genRhythm">
-                <option value="steady">All 4 beats</option>
-                <option value="mixed">Mixed (2–4 beats)</option>
-              </select>
-            </label>
+          <div class="generator-row">
+            <div class="control-row">
+              <label>
+                Length
+                <select id="genLength">
+                  <option value="4">4 chords</option>
+                  <option value="6">6 chords</option>
+                  <option value="8">8 chords</option>
+                </select>
+              </label>
+              <label>
+                Spice Level
+                <select id="genSpice">
+                  <option value="none">None</option>
+                  <option value="light" selected>Light</option>
+                  <option value="bold">Bold</option>
+                </select>
+              </label>
+              <label>
+                Rhythm Feel
+                <select id="genRhythm">
+                  <option value="steady">Steady (4 beats)</option>
+                  <option value="mixed">Mixed (1–4 beats)</option>
+                  <option value="short">Short (1–2 beats)</option>
+                  <option value="long">Long (4–8 beats)</option>
+                  <option value="pulse">Quarter Pulse</option>
+                  <option value="drive">Eighth Drive</option>
+                  <option value="syncopated">Syncopated</option>
+                  <option value="offbeat">Offbeat Pulse</option>
+                  <option value="push">Push Accents</option>
+                  <option value="tresillo">Tresillo</option>
+                  <option value="habanera">Habanera</option>
+                  <option value="clave">Clave</option>
+                  <option value="sparse">Sparse Hits</option>
+                </select>
+              </label>
+            </div>
+            <button id="generateProg" class="btn primary play">Generate Chord Progression</button>
           </div>
-          <button id="generateProg" class="btn primary play">Generate Chord Progression</button>
         </div>
 
         <details class="details builder-details">
@@ -140,9 +150,15 @@
               <select id="rhythmSelect">
                 <option value="whole">Whole Notes</option>
                 <option value="halves">Half Notes</option>
+                <option value="quarters">Quarter Pulse</option>
+                <option value="eighths">Eighth Drive</option>
                 <option value="syncopated">Syncopated</option>
                 <option value="offbeat">Offbeat Pulse</option>
+                <option value="push">Push Accents</option>
                 <option value="tresillo">Tresillo</option>
+                <option value="habanera">Habanera</option>
+                <option value="clave">Clave</option>
+                <option value="sparse">Sparse Hits</option>
               </select>
             </label>
             <label>
@@ -183,6 +199,7 @@
               <button id="addChordSlot" class="btn ghost small">Add Chord Slot</button>
               <button id="addFourSlots" class="btn ghost small">+4 Slots</button>
             </div>
+            <div class="note progression-hint">Drag to reorder • Tap × to remove</div>
           </div>
           <div class="chord-editor">
             <div class="editor-header">Selected Chord</div>
@@ -213,7 +230,6 @@
             </div>
             <div class="playback under">
               <button id="playBtn" class="btn primary play">Play</button>
-              <button id="stopBtn" class="btn ghost stop">Stop</button>
             </div>
           </div>
         </div>
@@ -223,18 +239,18 @@
             <div class="card-title">Chord Palette</div>
           </div>
           <div class="note palette-note">Drag into progression • Tap to audition</div>
-          <div class="palette-group diatonic">
-            <div class="sub-title">Diatonic</div>
+          <details class="palette-section diatonic" open>
+            <summary class="sub-title">Diatonic</summary>
             <div id="diatonicChords" class="chord-pool"></div>
-          </div>
-          <div class="palette-group extensions">
-            <div class="sub-title">With Extensions</div>
+          </details>
+          <details class="palette-section extensions" open>
+            <summary class="sub-title">With Extensions</summary>
             <div id="extendedChords" class="chord-pool"></div>
-          </div>
-          <div class="palette-group borrowed">
-            <div class="sub-title">Borrowed / Color</div>
+          </details>
+          <details class="palette-section borrowed" open>
+            <summary class="sub-title">Borrowed / Color</summary>
             <div id="borrowedChords" class="chord-pool"></div>
-          </div>
+          </details>
         </div>
       </div>
     </section>
