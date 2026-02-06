@@ -4,16 +4,134 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>
-      Clean Design, Fresh Results: Experience the power of Nick Webb's
-      portfolio.
-    </title>
+    <title>Nick Webb Special Projects</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Space+Grotesk:wght@400;500;600&display=swap");
+
+      :root {
+        --bg: #0d0f15;
+        --panel: rgba(255, 255, 255, 0.06);
+        --panel-strong: rgba(255, 255, 255, 0.1);
+        --text: #f5f7ff;
+        --muted: #a5b0c8;
+        --accent: #ff6ad5;
+        --accent-2: #4deeea;
+        --accent-3: #ffe66d;
+        --glow: 0 20px 60px rgba(255, 106, 213, 0.25);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Space Grotesk", sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at 10% 10%, #1b2137 0%, #0c0f17 45%, #090b11 100%);
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+
+      .orb {
+        position: fixed;
+        width: 420px;
+        height: 420px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 106, 213, 0.35), transparent 70%);
+        top: -120px;
+        right: -80px;
+        filter: blur(2px);
+        z-index: -1;
+      }
+
+      .orb.secondary {
+        width: 360px;
+        height: 360px;
+        left: -100px;
+        bottom: -120px;
+        background: radial-gradient(circle, rgba(77, 238, 234, 0.3), transparent 70%);
+      }
+
+      .wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 40px 6vw 70px;
+      }
+
+      header {
+        display: grid;
+        gap: 22px;
+        align-items: center;
+        margin-bottom: 60px;
+      }
+
+      .title {
+        font-family: "Unbounded", cursive;
+        font-size: clamp(2.4rem, 5vw, 4.1rem);
+        line-height: 1;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        background: linear-gradient(120deg, #ff6ad5, #4deeea 55%, #ffe66d);
+        -webkit-background-clip: text;
+        color: transparent;
+      }
+
+      .subtitle {
+        color: var(--muted);
+        max-width: 560px;
+        font-size: 1.08rem;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+
+      a.button,
+      a.ghost {
+        text-decoration: none;
+        color: var(--text);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 12px 18px;
+        border-radius: 999px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        font-weight: 600;
+      }
+
+      a.button:hover,
+      a.ghost:hover {
+        transform: translateY(-2px);
+        background: linear-gradient(120deg, #ffe66d, #ff6ad5, #4deeea);
+        color: #0c0f17;
+        box-shadow: 0 16px 32px rgba(255, 106, 213, 0.3);
+      }
+
+      footer {
+        margin-top: 50px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+    </style>
   </head>
   <body>
-    <p>Hi George & Molly! Love, daddy xxx</p>
-    <nav>
-      <li><a href="shuffle.html">ShapeShuffler</a></li>
-      <li><a href="kemper.html">Kemper Artist➡Profile</a></li>
-    </nav>
+    <div class="orb"></div>
+    <div class="orb secondary"></div>
+    <div class="wrap">
+      <header>
+        <div class="title">Nick Webb Special Projects</div>
+        <div class="subtitle">
+          A playground of creative experiments, tools, and prototypes.
+        </div>
+        <div class="actions">
+          <a class="ghost" href="gpl.html">Guitar Practice Lab</a>
+          <a class="ghost" href="shuffle.html">ShapeShuffler</a>
+          <a class="ghost" href="kemper.html">Kemper Artist➡Profile</a>
+        </div>
+      </header>
+
+      <footer>Hello George and Molly! Love, Daddy xxxx</footer>
+    </div>
   </body>
 </html>
