@@ -18,6 +18,8 @@ const keySelect = document.getElementById("keySelect");
 const modeSelect = document.getElementById("modeSelect");
 const tempoSlider = document.getElementById("tempo");
 const tempoLabel = document.getElementById("tempoLabel");
+const tempoDown = document.getElementById("tempoDown");
+const tempoUp = document.getElementById("tempoUp");
 const diatonicChords = document.getElementById("diatonicChords");
 const progressionEl = document.getElementById("progression");
 const progInput = document.getElementById("progInput");
@@ -32,6 +34,15 @@ const rhythmSelect = document.getElementById("rhythmSelect");
 const drumToggle = document.getElementById("drumToggle");
 const toneSlider = document.getElementById("toneSlider");
 const holdSlider = document.getElementById("holdSlider");
+const sampleOffsetSlider = document.getElementById("sampleOffset");
+const sampleTrimSlider = document.getElementById("sampleTrim");
+const drumStyleSelect = document.getElementById("drumStyleSelect");
+const instrumentSelect = document.getElementById("instrumentSelect");
+const guitarLevelSlider = document.getElementById("guitarLevel");
+const guitarLevelValue = document.getElementById("guitarLevelValue");
+const bassToggle = document.getElementById("bassToggle");
+const bassLevelSlider = document.getElementById("bassLevel");
+const bassRhythmSelect = document.getElementById("bassRhythmSelect");
 const progressionSelect = document.getElementById("progressionSelect");
 const genLength = document.getElementById("genLength");
 const genSpice = document.getElementById("genSpice");
@@ -77,13 +88,18 @@ const borrowedChords = document.getElementById("borrowedChords");
 const selectedChordLabel = document.getElementById("selectedChordLabel");
 const extensionButtons = document.getElementById("extensionButtons");
 const beatButtons = document.getElementById("beatButtons");
-const addChordSlot = document.getElementById("addChordSlot");
-const addFourSlots = document.getElementById("addFourSlots");
+const chordEditor = document.querySelector(".chord-editor");
+// chord slots are added by dragging chords into the progression
 const footerMinutes = document.getElementById("footerMinutes");
 const resetMinutes = document.getElementById("resetMinutes");
 const currentKey = document.getElementById("currentKey");
 const keyBanner = document.querySelector(".key-banner");
 const downloadMidiBtn = document.getElementById("downloadMidi");
+const keyLockBtn = document.getElementById("keyLockBtn");
+const countInEl = document.getElementById("countIn");
+const saveProgressionBtn = document.getElementById("saveProgression");
+const loadProgressionBtn = document.getElementById("loadProgression");
+const deleteProgressionBtn = document.getElementById("deleteProgression");
 
 const scrollButtons = document.querySelectorAll("[data-scroll]");
 
@@ -93,14 +109,20 @@ const state = {
   key: "C",
   mode: "major",
   style: "clean",
-  texture: "block",
-  rhythm: "whole",
+  texture: "pulse",
+  rhythm: "eighths",
   drumsEnabled: true,
+  bassEnabled: true,
   followPlayback: true,
   chordSize: "triad",
+  drumStyle: "pop",
+  bassRhythm: "steady",
   audioCtx: null,
   masterGain: null,
   masterFilter: null,
+  guitarBusGain: null,
+  pianoBusGain: null,
+  bassBusGain: null,
   drumBus: null,
   noiseBuffer: null,
   isPlaying: false,
@@ -109,6 +131,10 @@ const state = {
   uiChord: 0,
   nextTime: 0,
   timerId: null,
+  lastDrumBar: null,
+  lastCountBar: null,
+  lastVoicing: null,
+  editorPinned: false,
   sessionTimerId: null,
   sessionStartTime: null,
   pauseStartTime: null,
@@ -119,8 +145,27 @@ const state = {
   currentChordRoot: null,
   selectedChord: 0,
   noteHold: 1.4,
-  fretMode: "chord"
+  fretMode: "chord",
+  sampleBuffers: {},
+  samplesLoaded: false,
+  samplesLoading: null,
+  sampleOffsetMs: -40,
+  sampleTrimMs: 20,
+  synthEnabled: false,
+  sampleInstrument: "guitar",
+  guitarLevel: 0.05,
+  bassLevel: 0.35,
+  drumPattern: null,
+  drumSampleBuffers: {},
+  drumSamplesLoaded: false,
+  drumSamplesLoading: null,
+  keyLocked: false,
+  isCountingIn: false,
+  countInTimeouts: [],
+  sampleStatusTimeout: null
 };
+
+const SAVED_PROG_KEY = "gpl_saved_progressions";
 
 const scales = {
   "Major": MAJOR_SCALE,
@@ -159,10 +204,24 @@ const RHYTHMS = {
   tresillo: [0, 1.5, 3],
   habanera: [0, 1.5, 2, 3],
   clave: [0, 1.5, 2.5, 3],
-  sparse: [0, 2.5]
+  sparse: [0, 2.5],
+  rockStrum: [0, 0.5, 1.5, 2, 2.5, 3.5]
 };
 
 const EXTENSION_OPTIONS = ["maj7", "7", "9", "11", "13", "sus4", "add9"];
+
+const SAMPLE_LIBRARY = {
+  piano: [
+    { midi: 48, url: "gpl/samples/Piano.pp.C3.wav" },
+    { midi: 60, url: "gpl/samples/Piano.pp.C4.wav" },
+    { midi: 72, url: "gpl/samples/Piano.pp.C5.wav" }
+  ],
+  guitar: [
+    { midi: 48, url: "gpl/samples/guitar/Guitar.C3.wav" },
+    { midi: 60, url: "gpl/samples/guitar/Guitar.C4.wav" },
+    { midi: 72, url: "gpl/samples/guitar/Guitar.C5.wav" }
+  ]
+};
 
 const STYLE_PRESETS = {
   clean: { texture: "block", rhythm: "whole", drums: true, filter: 1200 },
@@ -182,27 +241,101 @@ const PROGRESSION_LIBRARY = [
   { name: "Cinematic Pop", tokens: ["I", "V", "vi", "III", "IV", "I", "IV", "V"] }
 ];
 
-const DRUM_PATTERNS = {
-  clean: {
-    kick: [0, 2],
-    snare: [1, 3],
-    hat: [0.5, 1.5, 2.5, 3.5]
+const DRUM_PATTERN_BANK = {
+  pop: [
+    { kick: [0, 2], snare: [1, 3], hat: [0.5, 1.5, 2.5, 3.5] },
+    { kick: [0, 2.5], snare: [1, 3], hat: [0.5, 1.5, 2, 2.5, 3.5], hatOpen: [3.5] },
+    { kick: [0, 1.5, 2], snare: [1, 3], hat: [0.5, 1.5, 2.5, 3.5] }
+  ],
+  electronic: [
+    { kick: [0, 1.5, 2.5], snare: [1, 3], hat: [0.25, 0.75, 1.25, 1.75, 2.25, 2.75, 3.25, 3.75] },
+    { kick: [0, 2], snare: [1.5, 3], hat: [0.25, 0.75, 1.25, 1.75, 2.5, 3.25, 3.75] },
+    { kick: [0, 1, 2.5], snare: [1.5, 3], hat: [0.5, 1, 1.5, 2, 2.5, 3, 3.5] }
+  ],
+  edm: [
+    { kick: [0, 1, 2, 3], snare: [2], hat: [0.5, 1.5, 2.5, 3.5] },
+    { kick: [0, 1, 2, 3], snare: [2], hat: [0.25, 0.75, 1.25, 1.75, 2.25, 2.75, 3.25, 3.75] }
+  ],
+  industrial: [
+    { kick: [0, 2.5], snare: [1.5, 3], hat: [0.5, 1, 1.5, 2.5, 3, 3.5], perc: [1.25, 2.25] },
+    { kick: [0, 1.75, 3], snare: [1.5], hat: [0.5, 1.25, 2, 2.75, 3.5], perc: [2.25] }
+  ],
+  african: [
+    { kick: [0, 1.5, 2.75], snare: [2], hat: [0.5, 1.25, 2, 2.75, 3.5], perc: [1.75, 3.25] },
+    { kick: [0, 1, 2.5], snare: [1.75, 3], hat: [0.5, 1.5, 2.25, 3.25], perc: [0.75, 2.75] }
+  ],
+  clave: [
+    { kick: [0, 1.5, 2.5, 3], snare: [2], hat: [0.5, 1.75, 2.75, 3.5], perc: [0, 1.5, 2.5, 3] },
+    { kick: [0, 2, 2.5], snare: [1.5, 3], hat: [0.5, 1.5, 2, 3.5], perc: [0, 2.5] }
+  ],
+  bossa: [
+    { kick: [0, 2.5], snare: [1, 3], hat: [0.5, 1.5, 2, 3.5] },
+    { kick: [0, 1.75, 2.5], snare: [1, 3], hat: [0.5, 1.5, 2.5, 3.5] }
+  ],
+  jazz: [
+    { kick: [0], snare: [2], hat: [0, 1.5, 2, 3.5] },
+    { kick: [0, 2.5], snare: [2], hat: [0, 1.5, 2.5, 3.5] }
+  ],
+  cinematic: [
+    { kick: [0, 2.5], snare: [3], hat: [1, 2, 3] },
+    { kick: [0, 3], snare: [2], hat: [1, 2.5, 3.5] }
+  ]
+};
+
+const DRUM_KITS = {
+  pearl: {
+    kick: "gpl/samples/drums/pearl/kick-01.wav",
+    snareA: "gpl/samples/drums/pearl/snare-01.wav",
+    snareB: "gpl/samples/drums/pearl/snare-02.wav",
+    hatClosed: "gpl/samples/drums/pearl/hihat-closed.wav",
+    hatOpen: "gpl/samples/drums/pearl/hihat-open.wav"
   },
-  neosoul: {
-    kick: [0, 2.5],
-    snare: [1.5, 3],
-    hat: [0.5, 1, 1.5, 2.5, 3, 3.5]
-  },
-  jazz: {
-    kick: [0],
-    snare: [2],
-    hat: [0, 1.5, 2, 3.5]
-  },
-  cinematic: {
-    kick: [0, 2.5],
-    snare: [3],
-    hat: [1, 2, 3]
+  cr78: {
+    kick: "gpl/samples/drums/cr78/kick.wav",
+    snareA: "gpl/samples/drums/cr78/snare.wav",
+    hatClosed: "gpl/samples/drums/cr78/hihat.wav",
+    hatOpen: "gpl/samples/drums/cr78/hihat-metal.wav",
+    perc: "gpl/samples/drums/cr78/conga-l.wav",
+    cowbell: "gpl/samples/drums/cr78/cowbell.wav",
+    rim: "gpl/samples/drums/cr78/rim.wav",
+    tamb: "gpl/samples/drums/cr78/tamb-short.wav"
   }
+};
+
+const DRUM_STYLE_KIT = {
+  pop: "pearl",
+  bossa: "pearl",
+  jazz: "pearl",
+  cinematic: "pearl",
+  electronic: "cr78",
+  edm: "cr78",
+  industrial: "cr78",
+  african: "cr78",
+  clave: "cr78"
+};
+
+const BASS_RHYTHMS = {
+  steady: [0, 2],
+  eighths: [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5],
+  syncopated: [0, 1.5, 2.5, 3.5],
+  offbeat: [0.5, 1.5, 2.5, 3.5],
+  tresillo: [0, 1.5, 3],
+  push: [0, 1.75, 2.75, 3.5],
+  oneDrop: [1.5, 3],
+  motown: [0, 1.5, 2, 3.5],
+  walking: [0, 1, 2, 3]
+};
+
+const DRUM_SOUNDS = {
+  pop: { kick: 110, snareTone: 1800, hatTone: 6000, hatDecay: 0.08 },
+  electronic: { kick: 80, snareTone: 2200, hatTone: 8000, hatDecay: 0.06 },
+  edm: { kick: 55, snareTone: 2000, hatTone: 9000, hatDecay: 0.05 },
+  industrial: { kick: 90, snareTone: 2600, hatTone: 9500, hatDecay: 0.04 },
+  african: { kick: 140, snareTone: 1600, hatTone: 5000, hatDecay: 0.07 },
+  clave: { kick: 120, snareTone: 2400, hatTone: 7000, hatDecay: 0.06 },
+  bossa: { kick: 105, snareTone: 1900, hatTone: 6500, hatDecay: 0.06 },
+  jazz: { kick: 80, snareTone: 1400, hatTone: 4500, hatDecay: 0.09 },
+  cinematic: { kick: 70, snareTone: 1200, hatTone: 4000, hatDecay: 0.1 }
 };
 
 function init() {
@@ -256,6 +389,20 @@ function init() {
   });
 
   tempoSlider.addEventListener("input", updateTempo);
+  if (tempoDown) {
+    tempoDown.addEventListener("click", () => {
+      const next = Math.max(parseInt(tempoSlider.min, 10), state.tempo - 1);
+      tempoSlider.value = next;
+      updateTempo();
+    });
+  }
+  if (tempoUp) {
+    tempoUp.addEventListener("click", () => {
+      const next = Math.min(parseInt(tempoSlider.max, 10), state.tempo + 1);
+      tempoSlider.value = next;
+      updateTempo();
+    });
+  }
 
   clearProg.addEventListener("click", () => {
     state.progression = [];
@@ -333,6 +480,126 @@ function init() {
     });
   }
 
+  if (sampleOffsetSlider) {
+    sampleOffsetSlider.addEventListener("input", () => {
+      state.sampleOffsetMs = parseInt(sampleOffsetSlider.value, 10);
+    });
+  }
+
+  if (sampleTrimSlider) {
+    sampleTrimSlider.addEventListener("input", () => {
+      state.sampleTrimMs = parseInt(sampleTrimSlider.value, 10);
+    });
+  }
+
+  if (drumStyleSelect) {
+    drumStyleSelect.addEventListener("change", () => {
+      state.drumStyle = drumStyleSelect.value;
+      selectDrumPattern();
+    });
+  }
+
+  if (bassToggle) {
+    bassToggle.addEventListener("change", () => {
+      state.bassEnabled = bassToggle.checked;
+    });
+  }
+
+  if (bassRhythmSelect) {
+    bassRhythmSelect.addEventListener("change", () => {
+      state.bassRhythm = bassRhythmSelect.value;
+    });
+  }
+
+  if (bassLevelSlider) {
+    bassLevelSlider.addEventListener("input", () => {
+      state.bassLevel = Math.max(0, parseInt(bassLevelSlider.value, 10) / 100);
+      if (state.bassBusGain) {
+        state.bassBusGain.gain.setValueAtTime(state.bassLevel, state.audioCtx?.currentTime || 0);
+      }
+    });
+  }
+
+  if (instrumentSelect) {
+    instrumentSelect.addEventListener("change", () => {
+      state.sampleInstrument = instrumentSelect.value;
+      reloadSamples();
+    });
+  }
+
+  if (guitarLevelSlider) {
+    guitarLevelSlider.addEventListener("input", () => {
+      state.guitarLevel = Math.max(0, parseInt(guitarLevelSlider.value, 10) / 100);
+      if (state.guitarBusGain) {
+        state.guitarBusGain.gain.setValueAtTime(state.guitarLevel, state.audioCtx?.currentTime || 0);
+      }
+      if (guitarLevelValue) guitarLevelValue.textContent = `${Math.round(state.guitarLevel * 100)}%`;
+    });
+  }
+
+  if (saveProgressionBtn) {
+    saveProgressionBtn.addEventListener("click", () => {
+      const name = window.prompt("Save progression name:");
+      if (!name) return;
+      const saved = loadSavedProgressions();
+      saved[name] = {
+        progression: state.progression,
+        key: state.key,
+        mode: state.mode,
+        tempo: state.tempo
+      };
+      localStorage.setItem(SAVED_PROG_KEY, JSON.stringify(saved));
+    });
+  }
+
+  if (loadProgressionBtn) {
+    loadProgressionBtn.addEventListener("click", () => {
+      const saved = loadSavedProgressions();
+      const names = Object.keys(saved);
+      if (!names.length) {
+        window.alert("No saved progressions yet.");
+        return;
+      }
+      const choice = window.prompt(`Load which progression?\n${names.join(", ")}`);
+      if (!choice || !saved[choice]) return;
+      const data = saved[choice];
+      state.progression = normalizeProgression(data.progression);
+      state.key = data.key || state.key;
+      state.mode = data.mode || state.mode;
+      state.tempo = data.tempo || state.tempo;
+      updateKeyBanner();
+      if (tempoSlider) {
+        tempoSlider.value = state.tempo;
+        updateTempo();
+      }
+      renderProgression();
+      updateChordEditor();
+    });
+  }
+
+  if (deleteProgressionBtn) {
+    deleteProgressionBtn.addEventListener("click", () => {
+      const saved = loadSavedProgressions();
+      const names = Object.keys(saved);
+      if (!names.length) {
+        window.alert("No saved progressions to delete.");
+        return;
+      }
+      const choice = window.prompt(`Delete which progression?\n${names.join(", ")}`);
+      if (!choice || !saved[choice]) return;
+      delete saved[choice];
+      localStorage.setItem(SAVED_PROG_KEY, JSON.stringify(saved));
+    });
+  }
+
+  if (keyLockBtn) {
+    keyLockBtn.addEventListener("click", () => {
+      state.keyLocked = !state.keyLocked;
+      keyLockBtn.setAttribute("aria-pressed", String(state.keyLocked));
+      keyLockBtn.textContent = state.keyLocked ? "Locked" : "Lock";
+    });
+  }
+
   if (scaleSelect) {
     scaleSelect.addEventListener("change", () => {
       updateScaleNotes();
@@ -388,6 +655,18 @@ function init() {
   progressionEl.addEventListener("drop", (event) => {
     const data = event.dataTransfer.getData("application/json");
     if (!data) return;
+    const targetItem = event.target.closest(".progression-item");
+    if (targetItem) return;
+    event.preventDefault();
+    const item = normalizeProgression([JSON.parse(data)])[0];
+    state.progression.push(item);
+    state.selectedChord = state.progression.length - 1;
+    updateChordEditor();
+    renderProgression();
+  });
+  progressionEl.addEventListener("drop", (event) => {
+    const data = event.dataTransfer.getData("application/json");
+    if (!data) return;
     const item = normalizeProgression([JSON.parse(data)])[0];
     state.progression.push(item);
     state.selectedChord = state.progression.length - 1;
@@ -395,25 +674,7 @@ function init() {
     renderProgression();
   });
 
-  if (addChordSlot) {
-    addChordSlot.addEventListener("click", () => {
-      state.progression.push(createChordItem("I", 4));
-      state.selectedChord = state.progression.length - 1;
-      updateChordEditor();
-      renderProgression();
-    });
-  }
-
-  if (addFourSlots) {
-    addFourSlots.addEventListener("click", () => {
-      for (let i = 0; i < 4; i += 1) {
-        state.progression.push(createChordItem("I", 4));
-      }
-      state.selectedChord = state.progression.length - 1;
-      updateChordEditor();
-      renderProgression();
-    });
-  }
+  // chord slots are added by dragging chords into the progression
 
   if (resetMinutes) {
     resetMinutes.addEventListener("click", () => {
@@ -434,13 +695,44 @@ function init() {
   });
 
   if (state.progression.length === 0) {
-    state.progression = [
-      createChordItem("I"),
-      createChordItem("vi"),
-      createChordItem("IV"),
-      createChordItem("V")
-    ];
-    renderProgression();
+    randomizeInitialSetup();
+    generateProgression();
+  }
+
+  if (instrumentSelect) instrumentSelect.value = state.sampleInstrument;
+  if (guitarLevelSlider) guitarLevelSlider.value = Math.round(state.guitarLevel * 100);
+  if (guitarLevelValue) guitarLevelValue.textContent = `${Math.round(state.guitarLevel * 100)}%`;
+  if (drumStyleSelect) drumStyleSelect.value = state.drumStyle;
+  if (bassToggle) bassToggle.checked = state.bassEnabled;
+  if (bassRhythmSelect) bassRhythmSelect.value = state.bassRhythm;
+  if (bassLevelSlider) bassLevelSlider.value = Math.round(state.bassLevel * 100);
+  if (rhythmSelect) rhythmSelect.value = state.rhythm;
+  if (textureSelect) textureSelect.value = state.texture;
+  selectDrumPattern();
+  applyInstrumentDefaults(false);
+  if (state.guitarBusGain) {
+    state.guitarBusGain.gain.value = state.guitarLevel;
+  }
+  if (state.bassBusGain) {
+    state.bassBusGain.gain.value = state.bassLevel;
+  }
+  if (keyLockBtn) keyLockBtn.setAttribute("aria-pressed", String(state.keyLocked));
+
+  refreshSavedProgressions();
+  if (chordEditor) chordEditor.classList.add("hidden");
+}
+
+function randomizeInitialSetup() {
+  if (keySelect) keySelect.value = "random";
+  if (modeSelect) modeSelect.value = "random";
+  if (styleSelect) styleSelect.value = "random";
+  if (drumStyleSelect) drumStyleSelect.value = "random";
+  if (genLength) genLength.value = "4";
+  if (genRhythm) genRhythm.value = "steady";
+  if (bassRhythmSelect) {
+    const options = Array.from(bassRhythmSelect.options).map((opt) => opt.value);
+    bassRhythmSelect.value = options[Math.floor(Math.random() * options.length)];
+    state.bassRhythm = bassRhythmSelect.value;
   }
 }
 
@@ -486,6 +778,19 @@ function setStyle(style) {
   if (state.masterFilter) state.masterFilter.frequency.setValueAtTime(preset.filter, state.audioCtx.currentTime);
 }
 
+function applyInstrumentDefaults(randomize = false) {
+  if (state.sampleInstrument !== "guitar" && state.sampleInstrument !== "piano") return;
+  state.texture = "pulse";
+  if (randomize) {
+    const options = ["rockStrum", "syncopated", "offbeat", "push", "tresillo"];
+    state.rhythm = options[Math.floor(Math.random() * options.length)];
+  } else if (state.sampleInstrument === "guitar") {
+    state.rhythm = "rockStrum";
+  }
+  if (textureSelect) textureSelect.value = state.texture;
+  if (rhythmSelect) rhythmSelect.value = state.rhythm;
+}
+
 function updateChordEditor() {
   if (!selectedChordLabel || !extensionButtons || !beatButtons) return;
   state.progression = normalizeProgression(state.progression);
@@ -493,8 +798,10 @@ function updateChordEditor() {
     selectedChordLabel.textContent = "Select a chord";
     extensionButtons.innerHTML = "";
     beatButtons.innerHTML = "";
+    if (chordEditor) chordEditor.classList.add("hidden");
     return;
   }
+  if (chordEditor && !state.editorPinned) chordEditor.classList.add("hidden");
   const item = state.progression[state.selectedChord] || state.progression[0];
   const description = describeItem(item);
   selectedChordLabel.textContent = `${description.name} • ${description.label}`;
@@ -530,7 +837,7 @@ function updateChordEditor() {
   });
 
   beatButtons.innerHTML = "";
-  [1, 2, 3, 4].forEach((beat) => {
+  [1, 2, 3, 4, 6, 8, 16].forEach((beat) => {
     const btn = document.createElement("button");
     btn.className = "btn ghost small";
     btn.textContent = beat;
@@ -546,7 +853,7 @@ function updateChordEditor() {
 
 function updateTempo() {
   state.tempo = parseInt(tempoSlider.value, 10);
-  tempoLabel.textContent = `${state.tempo} BPM`;
+  tempoLabel.textContent = `${state.tempo} bpm`;
 }
 
 function updateKeyBanner() {
@@ -629,9 +936,9 @@ function generateProgression() {
   const rhythm = genRhythm?.value || "steady";
 
   const randomKey = NOTES[Math.floor(Math.random() * NOTES.length)];
-  const chosenKey = keySelect?.value === "random" ? randomKey : keySelect?.value || randomKey;
+  const chosenKey = state.keyLocked ? state.key : (keySelect?.value === "random" ? randomKey : keySelect?.value || randomKey);
   state.key = chosenKey;
-  keySelect.value = chosenKey;
+  if (keySelect) keySelect.value = chosenKey;
 
   const modeOptions = ["major", "minor"];
   const chosenMode = modeSelect?.value === "random" ? modeOptions[Math.floor(Math.random() * modeOptions.length)] : modeSelect?.value || "major";
@@ -641,6 +948,13 @@ function generateProgression() {
   const styleOptions = ["clean", "neosoul", "jazz", "cinematic"];
   const chosenStyle = styleSelect?.value === "random" ? styleOptions[Math.floor(Math.random() * styleOptions.length)] : styleSelect?.value || "clean";
   setStyle(chosenStyle);
+  applyInstrumentDefaults(true);
+
+  const drumOptions = Object.keys(DRUM_PATTERN_BANK);
+  const chosenDrum = drumStyleSelect?.value === "random" ? drumOptions[Math.floor(Math.random() * drumOptions.length)] : drumStyleSelect?.value || "pop";
+  state.drumStyle = chosenDrum;
+  if (drumStyleSelect) drumStyleSelect.value = chosenDrum;
+  selectDrumPattern();
 
   const rhythmMap = {
     pulse: "quarters",
@@ -813,12 +1127,13 @@ function renderProgression() {
     if (idx === state.selectedChord) itemEl.classList.add("selected");
     itemEl.draggable = true;
     itemEl.dataset.index = idx;
-    const beatLabel = item.beats !== 1 ? `<div class="beats">${item.beats} beats</div>` : "";
+    const beatLabel = item.beats !== 1 ? `<div class="beats">${formatBeatLabel(item.beats)}</div>` : "";
     itemEl.innerHTML = `<span>${description.label}</span><strong>${description.name}</strong>${beatLabel}<button class="remove-chord" aria-label="Remove">×</button>`;
     itemEl.title = "Click to select";
     itemEl.addEventListener("click", (event) => {
       if (event.target.classList.contains("remove-chord")) return;
       state.selectedChord = idx;
+      state.editorPinned = true;
       updateChordEditor();
       renderProgression();
     });
@@ -837,6 +1152,23 @@ function renderProgression() {
     progressionEl.appendChild(itemEl);
   });
   syncProgressionInput();
+}
+
+document.addEventListener("click", (event) => {
+  if (!chordEditor || !progressionEl) return;
+  const clickedChord = event.target.closest(".progression-item");
+  const clickedEditor = event.target.closest(".chord-editor");
+  if (clickedChord || clickedEditor) return;
+  state.editorPinned = false;
+  chordEditor.classList.add("hidden");
+});
+
+function formatBeatLabel(beats) {
+  const bars = beats / 4;
+  if (Number.isInteger(bars)) {
+    return `${beats} beats · ${bars} bar${bars === 1 ? "" : "s"}`;
+  }
+  return `${beats} beats · ${bars.toFixed(1)} bars`;
 }
 
 function parseProgressionInput() {
@@ -975,9 +1307,23 @@ function chordFromDegree(token) {
   const parsed = romanToDegree(token);
   if (!parsed) return { root: "C", intervals: [0, 4, 7], quality: "maj" };
   const scale = state.mode === "major" ? MAJOR_SCALE : MINOR_SCALE;
-  const { degree, accidental } = parsed;
+  const { degree } = parsed;
+  let { accidental } = parsed;
+  // In minor keys, VI and VII are already flat relative to major.
+  // Treat bVI/bVII as diatonic VI/VII so we don't double-flat them.
+  if (state.mode === "minor" && accidental === -1 && (degree === 5 || degree === 6)) {
+    accidental = 0;
+  }
   const root = noteAt(state.key, scale[degree] + accidental, shouldUseFlatsForToken(token));
-  const quality = MODE_DATA[state.mode].qualities[degree];
+  let quality = MODE_DATA[state.mode].qualities[degree];
+  const normalized = token.replace(/[^IViv°]/g, "");
+  if (normalized.includes("°")) {
+    quality = "dim";
+  } else if (/[iv]/.test(normalized) && !/[IV]/.test(normalized)) {
+    quality = "min";
+  } else if (/[IV]/.test(normalized) && !/[iv]/.test(normalized)) {
+    quality = "maj";
+  }
   let intervals = quality === "maj" ? [0, 4, 7] : [0, 3, 7];
   if (quality === "dim") intervals = [0, 3, 6];
 
@@ -1083,6 +1429,9 @@ function initAudio() {
   state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   state.masterGain = state.audioCtx.createGain();
   state.masterFilter = state.audioCtx.createBiquadFilter();
+  state.guitarBusGain = state.audioCtx.createGain();
+  state.pianoBusGain = state.audioCtx.createGain();
+  state.bassBusGain = state.audioCtx.createGain();
   const compressor = state.audioCtx.createDynamicsCompressor();
   const delay = state.audioCtx.createDelay();
   const feedback = state.audioCtx.createGain();
@@ -1114,6 +1463,14 @@ function initAudio() {
   wetGain.connect(state.masterGain);
   state.masterGain.connect(state.audioCtx.destination);
 
+  // Instrument buses
+  state.guitarBusGain.gain.value = 0.05;
+  state.pianoBusGain.gain.value = 0.5;
+  state.bassBusGain.gain.value = state.bassLevel;
+  state.guitarBusGain.connect(state.masterFilter);
+  state.pianoBusGain.connect(state.masterFilter);
+  state.bassBusGain.connect(state.masterFilter);
+
   state.drumBus = state.audioCtx.createGain();
   state.drumBus.gain.value = 0.55;
   state.drumBus.connect(state.audioCtx.destination);
@@ -1123,6 +1480,9 @@ function initAudio() {
   for (let i = 0; i < data.length; i += 1) {
     data[i] = Math.random() * 2 - 1;
   }
+
+  loadSamples();
+  loadDrumSamples();
 }
 
 function startPlayback() {
@@ -1134,25 +1494,22 @@ function startPlayback() {
   state.currentChord = 0;
   state.uiChord = 0;
   state.selectedChord = 0;
+  state.lastDrumBar = null;
   updateChordEditor();
-  state.nextTime = state.audioCtx.currentTime + 0.05;
-
   state.fretMode = "chord";
   buildFretboard();
-
-  const firstItem = state.progression[0];
-  if (firstItem) updateNowPlaying(firstItem, chordFromItem(firstItem), 0);
-
-  state.timerId = setInterval(schedulePlayback, 25);
   if (!state.sessionTimerId) startSession();
-
-  updatePlayButton();
+  beginCountIn();
 }
 
 function pausePlayback() {
   if (!state.isPlaying || state.isPaused) return;
   state.isPaused = true;
   state.pauseStartTime = Date.now();
+  if (state.isCountingIn) {
+    clearCountIn();
+    state.isCountingIn = false;
+  }
   if (state.timerId) {
     clearInterval(state.timerId);
     state.timerId = null;
@@ -1169,9 +1526,61 @@ function resumePlayback() {
     state.pausedTotalMs += Date.now() - state.pauseStartTime;
     state.pauseStartTime = null;
   }
-  state.nextTime = state.audioCtx.currentTime + 0.05;
-  state.timerId = setInterval(schedulePlayback, 25);
+  beginCountIn();
+}
+
+function beginCountIn() {
+  if (!state.audioCtx) return;
+  clearCountIn();
+  state.isCountingIn = true;
+  const beat = 60 / state.tempo;
+  const startTime = state.audioCtx.currentTime + 0.05;
+  const beats = 4;
+
+  if (countInEl) {
+    Array.from(countInEl.querySelectorAll("span")).forEach((span) => span.classList.remove("active"));
+  }
+
+  // count-in drums for one bar
+  scheduleDrums(startTime, beats);
+
+  for (let i = 0; i < beats; i += 1) {
+    const delay = (startTime - state.audioCtx.currentTime + i * beat) * 1000;
+    const timeout = setTimeout(() => {
+      if (!countInEl) return;
+      const spans = Array.from(countInEl.querySelectorAll("span"));
+      spans.forEach((span) => span.classList.remove("active"));
+      const active = countInEl.querySelector(`span[data-count="${i + 1}"]`);
+      if (active) active.classList.add("active");
+    }, Math.max(0, delay));
+    state.countInTimeouts.push(timeout);
+  }
+
+  const afterCountIn = setTimeout(() => {
+    if (!state.isPlaying || state.isPaused) return;
+    state.isCountingIn = false;
+    if (countInEl) {
+      Array.from(countInEl.querySelectorAll("span")).forEach((span) => span.classList.remove("active"));
+    }
+    state.nextTime = startTime + beats * beat;
+    state.lastDrumBar = null;
+    state.lastCountBar = null;
+    const firstItem = state.progression[0];
+    if (firstItem) updateNowPlaying(firstItem, chordFromItem(firstItem), 0);
+    state.timerId = setInterval(schedulePlayback, 25);
+    updatePlayButton();
+  }, (startTime - state.audioCtx.currentTime + beats * beat) * 1000);
+
+  state.countInTimeouts.push(afterCountIn);
   updatePlayButton();
+}
+
+function clearCountIn() {
+  state.countInTimeouts.forEach((id) => clearTimeout(id));
+  state.countInTimeouts = [];
+  if (countInEl) {
+    Array.from(countInEl.querySelectorAll("span")).forEach((span) => span.classList.remove("active"));
+  }
 }
 
 function togglePlayback() {
@@ -1189,42 +1598,179 @@ function updatePlayButton() {
     playBtn.textContent = "Play";
     return;
   }
-  playBtn.textContent = state.isPaused ? "Play" : "Pause";
+  if (state.isCountingIn && !state.isPaused) {
+    playBtn.textContent = "Count-in…";
+  } else {
+    playBtn.textContent = state.isPaused ? "Play" : "Pause";
+  }
 }
 
 function schedulePlayback() {
   if (!state.isPlaying || !state.audioCtx) return;
   const lookAhead = 0.15;
+  const beat = 60 / state.tempo;
+  const barLength = beat * 4;
   while (state.nextTime < state.audioCtx.currentTime + lookAhead) {
     const index = state.currentChord;
     const item = state.progression[index];
     const chord = chordFromItem(item);
     scheduleChord(item, chord, state.nextTime, index, item.beats);
-    if (state.drumsEnabled) scheduleDrums(state.nextTime, item.beats);
     const duration = (60 / state.tempo) * item.beats;
+    if (state.drumsEnabled) {
+      const startBar = Math.floor(state.nextTime / barLength);
+      const endBar = Math.floor((state.nextTime + duration - 0.001) / barLength);
+      for (let barIndex = startBar; barIndex <= endBar; barIndex += 1) {
+        if (state.lastDrumBar === barIndex) continue;
+        const barTime = barIndex * barLength;
+        const fill = (barIndex + 1) % 8 === 0;
+        scheduleDrums(barTime, 4, fill);
+        state.lastDrumBar = barIndex;
+      }
+    }
+    const startBar = Math.floor(state.nextTime / barLength);
+    const endBar = Math.floor((state.nextTime + duration - 0.001) / barLength);
+    for (let barIndex = startBar; barIndex <= endBar; barIndex += 1) {
+      if (state.lastCountBar === barIndex) continue;
+      const barTime = barIndex * barLength;
+      scheduleBeatCount(barTime, beat);
+      state.lastCountBar = barIndex;
+    }
     state.nextTime += duration;
     state.currentChord = (state.currentChord + 1) % state.progression.length;
+  }
+}
+
+function scheduleBeatCount(barTime, beat) {
+  if (!countInEl) return;
+  for (let i = 0; i < 4; i += 1) {
+    const delay = (barTime - state.audioCtx.currentTime + i * beat) * 1000;
+    const timeout = setTimeout(() => {
+      const spans = Array.from(countInEl.querySelectorAll("span"));
+      spans.forEach((span) => span.classList.remove("active"));
+      const active = countInEl.querySelector(`span[data-count="${i + 1}"]`);
+      if (active) active.classList.add("active");
+    }, Math.max(0, delay));
+    state.countInTimeouts.push(timeout);
   }
 }
 
 function scheduleChord(item, chord, time, index, beats) {
   const { root, intervals } = chord;
   const baseMidi = noteToMidi(root, 3);
-  const notes = intervals.map((interval) => baseMidi + interval);
+  const baseNotes = intervals.map((interval) => baseMidi + interval);
+  const notes = getVoiceLedNotes(baseNotes);
   const duration = (60 / state.tempo) * beats;
-  const rhythm = RHYTHMS[state.rhythm] || RHYTHMS.whole;
-  rhythm.filter((beat) => beat < beats).forEach((beat) => {
+  const rhythm = getChordRhythm(beats);
+  rhythm.forEach((beat) => {
     const hitTime = time + (60 / state.tempo) * beat;
     if (state.texture === "arp") {
       notes.forEach((midi, idx) => playNote(midi, hitTime + idx * 0.08, duration * 0.6));
     } else if (state.texture === "pulse") {
-      notes.forEach((midi) => playNote(midi, hitTime, duration * 0.35));
+      const isUpstroke = Math.random() < 0.4;
+      const offset = isUpstroke ? -0.02 : 0;
+      notes.forEach((midi) => playNote(midi, hitTime + offset, duration * 0.35));
     } else {
       notes.forEach((midi, idx) => playNote(midi, hitTime + idx * 0.02, duration * 0.7));
     }
   });
 
   scheduleUiUpdate(item, chord, time, index);
+  if (state.bassEnabled) {
+    const beat = 60 / state.tempo;
+    const barTime = Math.floor(time / (beat * 4)) * (beat * 4);
+    scheduleBass(root, barTime);
+  }
+}
+
+function getVoiceLedNotes(baseNotes) {
+  if (!state.lastVoicing || state.lastVoicing.length !== baseNotes.length) {
+    state.lastVoicing = baseNotes.slice();
+    return baseNotes;
+  }
+  const prev = state.lastVoicing.slice().sort((a, b) => a - b);
+  const target = baseNotes.slice().sort((a, b) => a - b);
+  const voiced = target.map((note, idx) => {
+    const prevNote = prev[idx] ?? prev[prev.length - 1];
+    const candidates = [note - 12, note, note + 12];
+    let best = candidates[0];
+    let bestDist = Math.abs(prevNote - best);
+    candidates.forEach((cand) => {
+      const dist = Math.abs(prevNote - cand);
+      if (dist < bestDist) {
+        best = cand;
+        bestDist = dist;
+      }
+    });
+    return best;
+  });
+
+  // keep voicings in a comfortable mid range
+  const minNote = Math.min(...voiced);
+  const maxNote = Math.max(...voiced);
+  let adjusted = voiced.slice();
+  if (minNote < 48) adjusted = adjusted.map((n) => n + 12);
+  if (maxNote > 80) adjusted = adjusted.map((n) => n - 12);
+
+  state.lastVoicing = adjusted.slice().sort((a, b) => a - b);
+  return adjusted;
+}
+
+function getChordRhythm(beats) {
+  const base = (RHYTHMS[state.rhythm] || RHYTHMS.whole).filter((step) => step < beats);
+  if (base.length <= 1) return base;
+  const pattern = base.slice();
+  if (Math.random() < 0.35) {
+    const dropIndex = Math.floor(Math.random() * (pattern.length - 1)) + 1;
+    pattern.splice(dropIndex, 1);
+  }
+  if (Math.random() < 0.25) {
+    const target = pattern[Math.floor(Math.random() * pattern.length)];
+    const extra = target + 0.25;
+    if (extra < beats && !pattern.includes(extra)) pattern.push(extra);
+  }
+  pattern.sort((a, b) => a - b);
+  return pattern;
+}
+
+function scheduleBass(root, time) {
+  const beat = 60 / state.tempo;
+  const baseMidi = noteToMidi(root, 2);
+  const rhythm = BASS_RHYTHMS[state.bassRhythm] || BASS_RHYTHMS.steady;
+  rhythm.forEach((step) => {
+    const hitTime = time + step * beat;
+    const dur = state.bassRhythm === "eighths" ? beat * 0.45 : beat * 0.85;
+    playBassNote(baseMidi, hitTime, dur);
+  });
+}
+
+function playBassNote(midi, time, duration) {
+  if (!state.audioCtx || !state.bassBusGain) return;
+  const osc = state.audioCtx.createOscillator();
+  const osc2 = state.audioCtx.createOscillator();
+  const filter = state.audioCtx.createBiquadFilter();
+  const gain = state.audioCtx.createGain();
+  const freq = midiToFrequency(midi);
+  osc.type = "sawtooth";
+  osc2.type = "triangle";
+  osc.frequency.value = freq;
+  osc2.frequency.value = freq * 0.5;
+  filter.type = "lowpass";
+  filter.frequency.value = 180;
+  filter.Q.value = 0.7;
+
+  gain.gain.setValueAtTime(0, time);
+  gain.gain.linearRampToValueAtTime(0.6, time + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+
+  osc.connect(filter);
+  osc2.connect(filter);
+  filter.connect(gain);
+  gain.connect(state.bassBusGain);
+
+  osc.start(time);
+  osc2.start(time);
+  osc.stop(time + duration + 0.05);
+  osc2.stop(time + duration + 0.05);
 }
 
 function previewChord(item) {
@@ -1239,6 +1785,11 @@ function previewChord(item) {
 
 function playNote(midi, time, duration) {
   if (!state.audioCtx) return;
+  if (state.samplesLoaded) {
+    playSample(midi, time, duration);
+    return;
+  }
+  if (!state.synthEnabled) return;
   const oscA = state.audioCtx.createOscillator();
   const oscB = state.audioCtx.createOscillator();
   const oscC = state.audioCtx.createOscillator();
@@ -1263,7 +1814,7 @@ function playNote(midi, time, duration) {
   oscB.connect(oscMix);
   oscC.connect(oscMix);
   oscMix.connect(gain);
-  gain.connect(state.masterFilter);
+  gain.connect(state.audioCtx.destination);
   oscA.start(time);
   oscB.start(time);
   oscC.start(time);
@@ -1272,54 +1823,246 @@ function playNote(midi, time, duration) {
   oscC.stop(time + sustain + 0.3);
 }
 
-function scheduleDrums(time, beats = 4) {
-  if (!state.audioCtx || !state.drumBus || !state.drumsEnabled) return;
-  const pattern = DRUM_PATTERNS[state.style] || DRUM_PATTERNS.clean;
-  const beat = 60 / state.tempo;
-  pattern.kick.filter((step) => step < beats).forEach((step) => playKick(time + step * beat));
-  pattern.snare.filter((step) => step < beats).forEach((step) => playSnare(time + step * beat));
-  pattern.hat.filter((step) => step < beats).forEach((step) => playHat(time + step * beat));
+function loadSamples() {
+  if (state.samplesLoading || !state.audioCtx) return;
+  const sampleSet = SAMPLE_LIBRARY[state.sampleInstrument] || SAMPLE_LIBRARY.piano;
+  state.samplesLoading = Promise.allSettled(
+    sampleSet.map(async (sample) => {
+      const response = await fetch(sample.url);
+      if (!response.ok) throw new Error(`Fetch failed: ${sample.url}`);
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = await state.audioCtx.decodeAudioData(arrayBuffer);
+      state.sampleBuffers[sample.midi] = buffer;
+    })
+  ).then((results) => {
+    const failures = results.filter((result) => result.status === "rejected");
+    state.samplesLoaded = failures.length === 0 && Object.keys(state.sampleBuffers).length > 0;
+  });
 }
 
-function playKick(time) {
+function reloadSamples() {
+  state.sampleBuffers = {};
+  state.samplesLoaded = false;
+  state.samplesLoading = null;
+  loadSamples();
+}
+
+function selectDrumPattern() {
+  const patterns = DRUM_PATTERN_BANK[state.drumStyle] || DRUM_PATTERN_BANK.pop;
+  if (patterns.length <= 1) {
+    state.drumPattern = patterns[0];
+    return;
+  }
+  let next = patterns[Math.floor(Math.random() * patterns.length)];
+  if (state.drumPattern) {
+    for (let i = 0; i < 4 && next === state.drumPattern; i += 1) {
+      next = patterns[Math.floor(Math.random() * patterns.length)];
+    }
+  }
+  state.drumPattern = next;
+}
+
+function loadDrumSamples() {
+  if (state.drumSamplesLoading || !state.audioCtx) return;
+  const kits = Object.values(DRUM_KITS);
+  const urls = Array.from(new Set(kits.flatMap((kit) => Object.values(kit))));
+  state.drumSamplesLoading = Promise.allSettled(
+    urls.map(async (url) => {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Fetch failed: ${url}`);
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = await state.audioCtx.decodeAudioData(arrayBuffer);
+      state.drumSampleBuffers[url] = buffer;
+    })
+  ).then((results) => {
+    const failures = results.filter((result) => result.status === "rejected");
+    state.drumSamplesLoaded = failures.length === 0 && Object.keys(state.drumSampleBuffers).length > 0;
+  });
+}
+
+function playDrumSample(url, time, gainValue = 0.9) {
+  const buffer = state.drumSampleBuffers[url];
+  if (!buffer) return false;
+  const source = state.audioCtx.createBufferSource();
+  const gain = state.audioCtx.createGain();
+  source.buffer = buffer;
+  source.connect(gain);
+  gain.gain.setValueAtTime(gainValue, time);
+  gain.connect(state.drumBus);
+  source.start(time);
+  source.stop(time + Math.min(1.5, buffer.duration));
+  return true;
+}
+
+function playSample(midi, time, duration) {
+  const entries = Object.keys(state.sampleBuffers).map((key) => parseInt(key, 10)).filter((value) => !Number.isNaN(value));
+  if (entries.length === 0) {
+    state.samplesLoaded = false;
+    return;
+  }
+  let nearest = entries[0];
+  let bestDelta = Math.abs(midi - nearest);
+  entries.forEach((value) => {
+    const delta = Math.abs(midi - value);
+    if (delta < bestDelta) {
+      bestDelta = delta;
+      nearest = value;
+    }
+  });
+
+  const buffer = state.sampleBuffers[nearest];
+  if (!buffer) return;
+
+  const source = state.audioCtx.createBufferSource();
+  const envGain = state.audioCtx.createGain();
+  source.buffer = buffer;
+  source.playbackRate.value = Math.pow(2, (midi - nearest) / 12);
+  source.connect(envGain);
+
+  if (state.sampleInstrument === "guitar") {
+    const shaper = state.audioCtx.createWaveShaper();
+    shaper.curve = createDriveCurve(6);
+    shaper.oversample = "4x";
+    const filter = state.audioCtx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 3800;
+    const high = state.audioCtx.createBiquadFilter();
+    high.type = "highpass";
+    high.frequency.value = 120;
+    envGain.connect(shaper);
+    shaper.connect(filter);
+    filter.connect(high);
+    high.connect(state.guitarBusGain || state.masterFilter);
+  } else {
+    envGain.connect(state.pianoBusGain || state.masterFilter);
+  }
+
+  const hold = state.noteHold || 1;
+  const sustain = duration * hold;
+  const maxDuration = buffer.duration / source.playbackRate.value;
+  const stopTime = time + Math.min(sustain + 0.1, maxDuration);
+
+  if (state.sampleInstrument === "guitar" && state.guitarBusGain) {
+    state.guitarBusGain.gain.setValueAtTime(state.guitarLevel, time);
+  }
+  envGain.gain.setValueAtTime(0, time);
+  envGain.gain.linearRampToValueAtTime(1.0, time + 0.005);
+  envGain.gain.linearRampToValueAtTime(0, stopTime);
+
+  const offset = (state.sampleOffsetMs || 0) / 1000;
+  const trim = Math.max(0, (state.sampleTrimMs || 0) / 1000);
+  const startTime = Math.max(time + offset, state.audioCtx.currentTime + 0.002);
+  const safeStop = Math.max(stopTime + offset, startTime + 0.05);
+  const maxTrim = Math.max(0, buffer.duration - 0.05);
+  const safeTrim = Math.min(trim, maxTrim);
+  source.start(startTime, safeTrim);
+  source.stop(safeStop);
+}
+
+function createDriveCurve(amount) {
+  const samples = 44100;
+  const curve = new Float32Array(samples);
+  const k = amount * 20;
+  for (let i = 0; i < samples; i += 1) {
+    const x = (i * 2) / samples - 1;
+    curve[i] = ((1 + k) * x) / (1 + k * Math.abs(x));
+  }
+  return curve;
+}
+
+function scheduleDrums(barTime, beats = 4, fill = false) {
+  if (!state.audioCtx || !state.drumBus || !state.drumsEnabled) return;
+  const pattern = state.drumPattern || (DRUM_PATTERN_BANK[state.drumStyle] || DRUM_PATTERN_BANK.pop)[0];
+  const sound = DRUM_SOUNDS[state.drumStyle] || DRUM_SOUNDS.pop;
+  const beat = 60 / state.tempo;
+  const kitName = DRUM_STYLE_KIT[state.drumStyle] || "pearl";
+  const kit = DRUM_KITS[kitName];
+  const useSamples = state.drumSamplesLoaded && kit;
+  const barStart = barTime;
+
+  pattern.kick.filter((step) => step < beats).forEach((step) => {
+    const hitTime = barStart + step * beat;
+    if (!(useSamples && playDrumSample(kit.kick, hitTime, 0.9))) playKick(hitTime, sound);
+  });
+
+  const fillSnare = fill ? [1.5, 2, 2.5, 3, 3.5] : [];
+  const snareSteps = Array.from(new Set([1, 3, ...(pattern.snare || []), ...fillSnare])).filter((step) => step < beats);
+  snareSteps.forEach((step) => {
+    const hitTime = barStart + step * beat;
+    const snareUrl = kit?.snareB && Math.random() < 0.35 ? kit.snareB : kit?.snareA;
+    if (!(useSamples && snareUrl && playDrumSample(snareUrl, hitTime, 0.75))) playSnare(hitTime, sound);
+  });
+
+  pattern.hat.filter((step) => step < beats).forEach((step) => {
+    const hitTime = barStart + step * beat;
+    if (!(useSamples && kit?.hatClosed && playDrumSample(kit.hatClosed, hitTime, 0.35))) playHat(hitTime, sound);
+  });
+
+  if (pattern.hatOpen) {
+    pattern.hatOpen.filter((step) => step < beats).forEach((step) => {
+      const hitTime = barStart + step * beat;
+      if (useSamples && kit?.hatOpen) playDrumSample(kit.hatOpen, hitTime, 0.5);
+    });
+  }
+
+  if (pattern.perc) {
+    const percUrl = kit?.perc || kit?.cowbell || kit?.rim || kit?.tamb;
+    pattern.perc.filter((step) => step < beats).forEach((step) => {
+      const hitTime = barStart + step * beat;
+      if (useSamples && percUrl) playDrumSample(percUrl, hitTime, 0.5);
+    });
+  }
+}
+
+function playKick(time, sound) {
   const osc = state.audioCtx.createOscillator();
   const gain = state.audioCtx.createGain();
   osc.type = "sine";
-  osc.frequency.setValueAtTime(120, time);
-  osc.frequency.exponentialRampToValueAtTime(50, time + 0.2);
-  gain.gain.setValueAtTime(0.7, time);
-  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
+  const base = (sound?.kick || 110) * (1 + (Math.random() - 0.5) * 0.02);
+  osc.frequency.setValueAtTime(base, time);
+  osc.frequency.exponentialRampToValueAtTime(Math.max(40, base * 0.45), time + 0.18);
+  gain.gain.setValueAtTime(0.85, time);
+  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.22);
   osc.connect(gain).connect(state.drumBus);
   osc.start(time);
   osc.stop(time + 0.3);
 }
 
-function playSnare(time) {
+function playSnare(time, sound) {
   const noise = state.audioCtx.createBufferSource();
   noise.buffer = state.noiseBuffer;
   const filter = state.audioCtx.createBiquadFilter();
   filter.type = "highpass";
-  filter.frequency.value = 1200;
+  filter.frequency.value = sound?.snareTone || 1800;
+  const tone = state.audioCtx.createOscillator();
+  const toneGain = state.audioCtx.createGain();
+  tone.type = "triangle";
+  tone.frequency.value = 200;
   const gain = state.audioCtx.createGain();
   gain.gain.setValueAtTime(0.35, time);
-  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.2);
+  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.18);
   noise.connect(filter).connect(gain).connect(state.drumBus);
+  tone.connect(toneGain).connect(state.drumBus);
+  toneGain.gain.setValueAtTime(0.12, time);
+  toneGain.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
   noise.start(time);
-  noise.stop(time + 0.22);
+  noise.stop(time + 0.2);
+  tone.start(time);
+  tone.stop(time + 0.16);
 }
 
-function playHat(time) {
+function playHat(time, sound) {
   const noise = state.audioCtx.createBufferSource();
   noise.buffer = state.noiseBuffer;
   const filter = state.audioCtx.createBiquadFilter();
   filter.type = "highpass";
-  filter.frequency.value = 5000;
+  filter.frequency.value = sound?.hatTone || 6000;
   const gain = state.audioCtx.createGain();
-  gain.gain.setValueAtTime(0.2, time);
-  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+  gain.gain.setValueAtTime(0.16, time);
+  gain.gain.exponentialRampToValueAtTime(0.001, time + (sound?.hatDecay || 0.08));
   noise.connect(filter).connect(gain).connect(state.drumBus);
   noise.start(time);
-  noise.stop(time + 0.1);
+  noise.stop(time + (sound?.hatDecay || 0.08) + 0.02);
 }
 
 function scheduleUiUpdate(item, chord, time, index) {
@@ -1569,6 +2312,12 @@ function loadProgress() {
   if (streakEl) streakEl.textContent = `${data.streak || 0} days`;
   if (footerMinutes) footerMinutes.textContent = data.totalMinutes || 0;
 }
+
+function loadSavedProgressions() {
+  return JSON.parse(localStorage.getItem(SAVED_PROG_KEY) || "{}");
+}
+
+function refreshSavedProgressions() {}
 
 function bumpSessionCounters() {
   const data = JSON.parse(localStorage.getItem("fretflow_progress") || "{}");

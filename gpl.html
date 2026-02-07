@@ -152,6 +152,7 @@
                 <option value="halves">Half Notes</option>
                 <option value="quarters">Quarter Pulse</option>
                 <option value="eighths">Eighth Drive</option>
+                <option value="rockStrum">Rock Strum</option>
                 <option value="syncopated">Syncopated</option>
                 <option value="offbeat">Offbeat Pulse</option>
                 <option value="push">Push Accents</option>
@@ -169,14 +170,75 @@
               Note Hold
               <input id="holdSlider" type="range" min="0.6" max="2.5" step="0.1" value="1.4" />
             </label>
+            <label>
+              Sample Timing
+              <input id="sampleOffset" type="range" min="-600" max="200" step="5" value="-40" />
+            </label>
+            <label>
+              Sample Trim
+              <input id="sampleTrim" type="range" min="0" max="300" step="10" value="20" />
+            </label>
+            <label>
+              Instrument
+              <select id="instrumentSelect">
+                <option value="piano" selected>Piano</option>
+                <option value="guitar">Rock Guitar</option>
+              </select>
+            </label>
+            <label>
+              Guitar Level
+              <div class="level-row">
+                <input id="guitarLevel" type="range" min="0" max="100" step="5" value="5" />
+                <span id="guitarLevelValue">5%</span>
+              </div>
+            </label>
+            <label>
+              Drum Style
+              <select id="drumStyleSelect">
+                <option value="random">Random</option>
+                <option value="pop" selected>Pop/Rock</option>
+                <option value="electronic">Electronic</option>
+                <option value="edm">EDM</option>
+                <option value="industrial">Industrial</option>
+                <option value="african">African</option>
+                <option value="clave">Clave</option>
+                <option value="bossa">Bossa Nova</option>
+                <option value="jazz">Jazz</option>
+                <option value="cinematic">Cinematic</option>
+              </select>
+            </label>
             <label class="toggle">
               Drums
               <input id="drumToggle" type="checkbox" checked />
               <span>Enabled</span>
             </label>
+            <label class="toggle">
+              Bass
+              <input id="bassToggle" type="checkbox" checked />
+              <span>Enabled</span>
+            </label>
+            <label>
+              Bass Rhythm
+              <select id="bassRhythmSelect">
+                <option value="steady" selected>Steady (1 & 3)</option>
+                <option value="eighths">Eighth Pulse</option>
+                <option value="syncopated">Syncopated</option>
+                <option value="offbeat">Offbeat</option>
+                <option value="tresillo">Tresillo</option>
+                <option value="push">Push Accents</option>
+                <option value="oneDrop">Reggae One-Drop</option>
+                <option value="motown">Motown</option>
+                <option value="walking">Walking</option>
+              </select>
+            </label>
+            <label>
+              Bass Level
+              <input id="bassLevel" type="range" min="0" max="100" step="5" value="35" />
+            </label>
           </div>
 
-          <div class="note">Warm synth backing + optional drums to keep the focus on phrasing.</div>
+          <div class="note">Sampled backing + optional drums to keep the focus on phrasing.</div>
+          <div class="audio-credits">Audio samples: Pearl Master Studio (CC BY 3.0) and CR-78 (Public Domain) via Sampled by oramics.</div>
         </details>
       </div>
 
@@ -185,22 +247,51 @@
           <div class="progression-block">
             <div class="key-row">
               <div class="key-banner">Key: <span id="currentKey">C Major</span></div>
+              <button id="keyLockBtn" class="key-lock" type="button" aria-pressed="false">Lock</button>
               <div class="tempo-pill">
                 <div class="tempo-label">Tempo</div>
                 <div class="tempo-wrap funky">
+                  <button id="tempoDown" class="tempo-step" type="button">-</button>
                   <input id="tempo" type="range" min="50" max="200" value="100" />
-                  <span id="tempoLabel">100 BPM</span>
+                  <button id="tempoUp" class="tempo-step" type="button">+</button>
+                  <span id="tempoLabel">100 bpm</span>
                 </div>
               </div>
             </div>
             <div class="sub-title">Progression</div>
             <div id="progression" class="progression large"></div>
             <div class="progression-actions">
-              <button id="addChordSlot" class="btn ghost small">Add Chord Slot</button>
-              <button id="addFourSlots" class="btn ghost small">+4 Slots</button>
+              <div class="progression-actions-left">
+                <div class="note progression-hint">Drag to reorder • Tap × to remove</div>
+              </div>
+              <div class="progression-actions-right">
+                <button id="saveProgression" class="btn ghost small">Save</button>
+                <button id="loadProgression" class="btn ghost small">Load</button>
+                <button id="deleteProgression" class="btn ghost small">Delete</button>
+              </div>
             </div>
-            <div class="note progression-hint">Drag to reorder • Tap × to remove</div>
           </div>
+          <details class="palette-drawer">
+            <summary>Chord Palette</summary>
+            <div class="palette">
+              <div class="palette-head">
+                <div class="card-title">Chord Palette</div>
+              </div>
+              <div class="note palette-note">Drag into progression • Tap to audition</div>
+              <details class="palette-section diatonic" open>
+                <summary class="sub-title">Diatonic</summary>
+                <div id="diatonicChords" class="chord-pool"></div>
+              </details>
+              <details class="palette-section extensions" open>
+                <summary class="sub-title">With Extensions</summary>
+                <div id="extendedChords" class="chord-pool"></div>
+              </details>
+              <details class="palette-section borrowed" open>
+                <summary class="sub-title">Borrowed / Color</summary>
+                <div id="borrowedChords" class="chord-pool"></div>
+              </details>
+            </div>
+          </details>
           <div class="chord-editor">
             <div class="editor-header">Selected Chord</div>
             <div id="selectedChordLabel" class="selected-chord">Select a chord</div>
@@ -232,27 +323,15 @@
               <button id="playBtn" class="btn primary play">Play</button>
               <button id="downloadMidi" class="btn ghost">Download MIDI</button>
             </div>
+            <div id="countIn" class="count-in" aria-live="polite">
+              <span data-count="1">1</span>
+              <span data-count="2">2</span>
+              <span data-count="3">3</span>
+              <span data-count="4">4</span>
+            </div>
           </div>
         </div>
 
-        <div class="card palette">
-          <div class="palette-head">
-            <div class="card-title">Chord Palette</div>
-          </div>
-          <div class="note palette-note">Drag into progression • Tap to audition</div>
-          <details class="palette-section diatonic" open>
-            <summary class="sub-title">Diatonic</summary>
-            <div id="diatonicChords" class="chord-pool"></div>
-          </details>
-          <details class="palette-section extensions" open>
-            <summary class="sub-title">With Extensions</summary>
-            <div id="extendedChords" class="chord-pool"></div>
-          </details>
-          <details class="palette-section borrowed" open>
-            <summary class="sub-title">Borrowed / Color</summary>
-            <div id="borrowedChords" class="chord-pool"></div>
-          </details>
-        </div>
       </div>
     </section>
   </main>

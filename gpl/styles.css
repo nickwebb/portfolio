@@ -69,6 +69,8 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .brand {
@@ -222,9 +224,17 @@ body {
 }
 
 .grid.practice-grid {
-  grid-template-columns: minmax(320px, 1.35fr) minmax(280px, 0.75fr);
+  grid-template-columns: minmax(320px, 1fr);
   align-items: stretch;
   gap: 28px;
+}
+
+.card.builder,
+.grid.practice-grid {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
 }
 
 .stack {
@@ -325,6 +335,30 @@ body {
 
 .key-banner.pulse {
   animation: keyPulse 1.2s ease-in-out 1;
+}
+
+.key-lock {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.key-lock:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(255, 140, 66, 0.2);
+}
+
+.key-lock[aria-pressed="true"] {
+  background: rgba(255, 140, 66, 0.25);
+  border-color: rgba(255, 140, 66, 0.55);
+  color: #fff0dc;
 }
 
 .progression.large {
@@ -431,6 +465,28 @@ input[type="text"] {
   border: 1px solid rgba(42, 212, 255, 0.3);
 }
 
+.tempo-wrap span {
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tempo-step {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tempo-step:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
 .tempo-label.funky span {
   font-weight: 600;
   color: #d6f6ff;
@@ -519,6 +575,38 @@ input[type="text"] {
 .palette {
   display: grid;
   gap: 4px;
+}
+
+.palette-drawer {
+  margin-top: 16px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+
+.palette-drawer summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.palette-drawer summary::-webkit-details-marker {
+  display: none;
+}
+
+.palette-drawer summary::after {
+  content: "▾";
+  float: right;
+  opacity: 0.6;
+}
+
+.palette-drawer[open] summary::after {
+  transform: rotate(180deg);
 }
 
 .palette-head {
@@ -711,6 +799,10 @@ input[type="text"] {
   gap: 10px;
 }
 
+.chord-editor.hidden {
+  display: none;
+}
+
 .editor-header {
   font-weight: 600;
 }
@@ -758,6 +850,14 @@ input[type="text"] {
   display: flex;
   gap: 10px;
   margin-top: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.progression-actions-right {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .progression-input {
@@ -888,6 +988,47 @@ input[type="text"] {
   margin-top: 26px;
 }
 
+
+.count-in {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.count-in span {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.count-in span.active {
+  color: #1a0e08;
+  background: linear-gradient(135deg, var(--accent), var(--accent-3));
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(255, 94, 168, 0.35);
+}
+
+.level-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.level-row span {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  min-width: 40px;
+  text-align: right;
+}
+
 .session-timer {
   font-size: 2.4rem;
   font-weight: 600;
@@ -928,6 +1069,12 @@ input[type="text"] {
   background: rgba(42, 212, 255, 0.15);
   border: 1px solid rgba(42, 212, 255, 0.3);
   font-size: 0.85rem;
+}
+
+.audio-credits {
+  margin-top: 10px;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .fretboard {
@@ -992,6 +1139,8 @@ input[type="text"] {
   align-items: center;
   gap: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .footer-meta {
