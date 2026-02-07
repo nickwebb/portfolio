@@ -741,14 +741,8 @@ input[type="text"] {
   transform: rotate(180deg);
 }
 
-.palette-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding-bottom: 0;
-  border-bottom: none;
-  margin-bottom: 0;
+.palette .card-title {
+  display: none;
 }
 
 .palette-note {
