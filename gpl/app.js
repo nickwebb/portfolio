@@ -2251,12 +2251,16 @@ function buildFretboard() {
   strings.forEach((open) => {
     for (let fret = 0; fret <= frets; fret += 1) {
       const note = noteAt(open, (fret + offset) % 12);
+      const normalized = FLAT_EQUIV[note] || note;
       const cell = document.createElement("div");
       cell.className = "fret";
       cell.textContent = note;
-      if (highlightSet.has(note)) cell.classList.add("active");
-      if (overlaySet.has(note)) cell.classList.add("overlay");
-      if (state.currentChordRoot && note === state.currentChordRoot) cell.classList.add("root");
+      if (highlightSet.has(normalized)) cell.classList.add("active");
+      if (overlaySet.has(normalized)) cell.classList.add("overlay");
+      if (state.currentChordRoot) {
+        const rootNorm = FLAT_EQUIV[state.currentChordRoot] || state.currentChordRoot;
+        if (normalized === rootNorm) cell.classList.add("root");
+      }
       fretboardGrid.appendChild(cell);
     }
   });
@@ -2264,13 +2268,15 @@ function buildFretboard() {
 
 function getHighlightNotes() {
   const chordSet = state.currentChordNotes.size > 0 ? state.currentChordNotes : new Set();
+  const normalize = (note) => FLAT_EQUIV[note] || note;
+  const normalizedChord = new Set(Array.from(chordSet).map(normalize));
   if (state.fretMode === "scale") {
     if (!scaleSelect) return { highlightSet: chordSet, overlaySet: new Set() };
     const intervals = scales[scaleSelect.value];
-    const overlaySet = new Set(intervals.map((interval) => noteAt(state.key, interval)));
-    return { highlightSet: chordSet, overlaySet };
+    const overlaySet = new Set(intervals.map((interval) => normalize(noteAt(state.key, interval))));
+    return { highlightSet: normalizedChord, overlaySet };
   }
-  return { highlightSet: chordSet, overlaySet: new Set() };
+  return { highlightSet: normalizedChord, overlaySet: new Set() };
 }
 
 function startSession() {
