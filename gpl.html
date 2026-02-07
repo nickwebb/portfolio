@@ -24,6 +24,113 @@
     <section id="practice" class="section">
       <div class="section-title compact-title"></div>
 
+      <div class="grid practice-grid">
+        <div class="card practice-hub">
+          <div class="progression-block">
+            <div class="key-row">
+              <div class="key-pill-wrap">
+                <button id="keyPill" class="key-banner" type="button" aria-expanded="false">Key: <span id="currentKey">C Major</span></button>
+                <div id="keyPicker" class="key-picker" aria-hidden="true">
+                  <div class="key-picker-section">
+                    <div class="key-picker-label">Key</div>
+                    <div id="keyPickerNotes" class="key-picker-notes"></div>
+                  </div>
+                  <div class="key-picker-section">
+                    <div class="key-picker-label">Mode</div>
+                    <div class="key-picker-modes">
+                      <button data-mode="major" class="btn ghost small">Major</button>
+                      <button data-mode="minor" class="btn ghost small">Minor</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button id="keyLockBtn" class="key-lock" type="button" aria-pressed="false">Lock</button>
+              <div class="tempo-pill">
+                <div class="tempo-label">Tempo</div>
+                <div class="tempo-wrap funky">
+                  <button id="tempoDown" class="tempo-step" type="button">-</button>
+                  <input id="tempo" type="range" min="50" max="200" value="100" />
+                  <button id="tempoUp" class="tempo-step" type="button">+</button>
+                  <span id="tempoLabel">100 bpm</span>
+                </div>
+              </div>
+            </div>
+            <div class="sub-title">Progression</div>
+            <div id="progression" class="progression large"></div>
+            <div class="progression-actions">
+              <div class="progression-actions-left">
+                <div class="note progression-hint">Drag to reorder • Tap × to remove</div>
+              </div>
+              <div class="progression-actions-right">
+                <button id="saveProgression" class="btn ghost small">Save</button>
+                <button id="loadProgression" class="btn ghost small">Load</button>
+                <button id="deleteProgression" class="btn ghost small">Delete</button>
+              </div>
+            </div>
+          </div>
+          <div class="chord-editor">
+            <div class="editor-header">Selected Chord</div>
+            <div id="selectedChordLabel" class="selected-chord">Select a chord</div>
+            <div class="editor-row">
+              <div class="editor-label">Extensions</div>
+              <div id="extensionButtons" class="editor-buttons"></div>
+            </div>
+            <div class="editor-row">
+              <div class="editor-label">Duration (beats)</div>
+              <div id="beatButtons" class="editor-buttons"></div>
+            </div>
+          </div>
+
+          <div class="fretboard-block">
+            <div class="fretboard-head">
+              <div>
+                <div class="sub-title">Fretboard Map</div>
+              </div>
+              <label class="toggle compact">
+                Show fretboard
+                <input id="fretToggle" type="checkbox" checked />
+              </label>
+            </div>
+            <div class="fretboard-wrapper">
+              <div id="fretboardMarkers" class="fretboard-markers"></div>
+              <div id="fretboardGrid" class="fretboard"></div>
+            </div>
+            <div class="playback under">
+              <button id="playBtn" class="btn primary play">Play</button>
+              <button id="downloadMidi" class="btn ghost">Download MIDI</button>
+            </div>
+            <div id="countIn" class="count-in" aria-live="polite">
+              <span data-count="1">1</span>
+              <span data-count="2">2</span>
+              <span data-count="3">3</span>
+              <span data-count="4">4</span>
+            </div>
+          </div>
+          <details class="palette-drawer mobile-compact">
+            <summary>Chord Palette</summary>
+            <div class="palette">
+              <div class="palette-head">
+                <div class="card-title">Chord Palette</div>
+              </div>
+              <div class="note palette-note">Tap or drag to add • Tap to audition</div>
+              <details class="palette-section diatonic" open>
+                <summary class="sub-title">Diatonic</summary>
+                <div id="diatonicChords" class="chord-pool"></div>
+              </details>
+              <details class="palette-section extensions" open>
+                <summary class="sub-title">With Extensions</summary>
+                <div id="extendedChords" class="chord-pool"></div>
+              </details>
+              <details class="palette-section borrowed" open>
+                <summary class="sub-title">Borrowed / Color</summary>
+                <div id="borrowedChords" class="chord-pool"></div>
+              </details>
+            </div>
+          </details>
+        </div>
+
+      </div>
+
       <div class="card builder">
         <div class="card-title">Chord Progression</div>
         <div class="preset-row">
@@ -247,98 +354,6 @@
           <div class="note">Sampled backing + optional drums to keep the focus on phrasing.</div>
           <div class="audio-credits">Audio samples: Pearl Master Studio (CC BY 3.0) and CR-78 (Public Domain) via Sampled by oramics.</div>
         </details>
-      </div>
-
-      <div class="grid practice-grid">
-        <div class="card practice-hub">
-          <div class="progression-block">
-            <div class="key-row">
-              <button id="keyPill" class="key-banner" type="button">Key: <span id="currentKey">C Major</span></button>
-              <button id="keyLockBtn" class="key-lock" type="button" aria-pressed="false">Lock</button>
-              <div class="tempo-pill">
-                <div class="tempo-label">Tempo</div>
-                <div class="tempo-wrap funky">
-                  <button id="tempoDown" class="tempo-step" type="button">-</button>
-                  <input id="tempo" type="range" min="50" max="200" value="100" />
-                  <button id="tempoUp" class="tempo-step" type="button">+</button>
-                  <span id="tempoLabel">100 bpm</span>
-                </div>
-              </div>
-            </div>
-            <div class="sub-title">Progression</div>
-            <div id="progression" class="progression large"></div>
-            <div class="progression-actions">
-              <div class="progression-actions-left">
-                <div class="note progression-hint">Drag to reorder • Tap × to remove</div>
-              </div>
-              <div class="progression-actions-right">
-                <button id="saveProgression" class="btn ghost small">Save</button>
-                <button id="loadProgression" class="btn ghost small">Load</button>
-                <button id="deleteProgression" class="btn ghost small">Delete</button>
-              </div>
-            </div>
-          </div>
-          <details class="palette-drawer mobile-compact">
-            <summary>Chord Palette</summary>
-            <div class="palette">
-              <div class="palette-head">
-                <div class="card-title">Chord Palette</div>
-              </div>
-              <div class="note palette-note">Tap or drag to add • Tap to audition</div>
-              <details class="palette-section diatonic" open>
-                <summary class="sub-title">Diatonic</summary>
-                <div id="diatonicChords" class="chord-pool"></div>
-              </details>
-              <details class="palette-section extensions" open>
-                <summary class="sub-title">With Extensions</summary>
-                <div id="extendedChords" class="chord-pool"></div>
-              </details>
-              <details class="palette-section borrowed" open>
-                <summary class="sub-title">Borrowed / Color</summary>
-                <div id="borrowedChords" class="chord-pool"></div>
-              </details>
-            </div>
-          </details>
-          <div class="chord-editor">
-            <div class="editor-header">Selected Chord</div>
-            <div id="selectedChordLabel" class="selected-chord">Select a chord</div>
-            <div class="editor-row">
-              <div class="editor-label">Extensions</div>
-              <div id="extensionButtons" class="editor-buttons"></div>
-            </div>
-            <div class="editor-row">
-              <div class="editor-label">Duration (beats)</div>
-              <div id="beatButtons" class="editor-buttons"></div>
-            </div>
-          </div>
-
-          <div class="fretboard-block">
-            <div class="fretboard-head">
-              <div>
-                <div class="sub-title">Fretboard Map</div>
-              </div>
-              <label class="toggle compact">
-                Show fretboard
-                <input id="fretToggle" type="checkbox" checked />
-              </label>
-            </div>
-            <div class="fretboard-wrapper">
-              <div id="fretboardMarkers" class="fretboard-markers"></div>
-              <div id="fretboardGrid" class="fretboard"></div>
-            </div>
-            <div class="playback under">
-              <button id="playBtn" class="btn primary play">Play</button>
-              <button id="downloadMidi" class="btn ghost">Download MIDI</button>
-            </div>
-            <div id="countIn" class="count-in" aria-live="polite">
-              <span data-count="1">1</span>
-              <span data-count="2">2</span>
-              <span data-count="3">3</span>
-              <span data-count="4">4</span>
-            </div>
-          </div>
-        </div>
-
       </div>
     </section>
   </main>

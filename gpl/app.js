@@ -99,6 +99,9 @@ const footerMinutes = document.getElementById("footerMinutes");
 const resetMinutes = document.getElementById("resetMinutes");
 const currentKey = document.getElementById("currentKey");
 const keyBanner = document.querySelector(".key-banner");
+const keyPill = document.getElementById("keyPill");
+const keyPicker = document.getElementById("keyPicker");
+const keyPickerNotes = document.getElementById("keyPickerNotes");
 const downloadMidiBtn = document.getElementById("downloadMidi");
 const keyLockBtn = document.getElementById("keyLockBtn");
 const countInEl = document.getElementById("countIn");
@@ -140,8 +143,9 @@ const state = {
   currentChord: 0,
   uiChord: 0,
   nextTime: 0,
+  nextDrumTime: 0,
   timerId: null,
-  lastDrumBar: null,
+  drumBarCount: 0,
   lastCountBar: null,
   lastVoicing: null,
   editorPinned: false,
@@ -176,6 +180,7 @@ const state = {
 };
 
 const SAVED_PROG_KEY = "gpl_saved_progressions";
+const DEBUG_AUDIO = true;
 
 const scales = {
   "Major": MAJOR_SCALE,
@@ -494,10 +499,6 @@ function init() {
     state.rhythm = rhythmSelect.value;
   });
 
-  drumToggle.addEventListener("change", () => {
-    state.drumsEnabled = drumToggle.checked;
-  });
-
   toneSlider.addEventListener("input", () => {
     if (state.masterFilter) {
       state.masterFilter.frequency.setValueAtTime(parseInt(toneSlider.value, 10), state.audioCtx.currentTime);
@@ -546,6 +547,16 @@ function init() {
       state.bassLevel = Math.max(0, parseInt(bassLevelSlider.value, 10) / 100);
       if (state.bassBusGain) {
         state.bassBusGain.gain.setValueAtTime(state.bassLevel, state.audioCtx?.currentTime || 0);
+      }
+    });
+  }
+
+  if (drumToggle) {
+    drumToggle.addEventListener("change", () => {
+      state.drumsEnabled = drumToggle.checked;
+      if (state.drumsEnabled) {
+        state.drumBarCount = 0;
+        state.nextDrumTime = state.audioCtx ? state.audioCtx.currentTime + 0.05 : 0;
       }
     });
   }
@@ -689,6 +700,19 @@ function init() {
     });
   }
 
+  if (keyPill) {
+    keyPill.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleKeyPicker();
+    });
+  }
+
+  document.addEventListener("click", (event) => {
+    if (!keyPicker || !keyPill) return;
+    if (event.target.closest("#keyPicker") || event.target.closest("#keyPill")) return;
+    closeKeyPicker();
+  });
+
   if (scaleSelect) {
     scaleSelect.addEventListener("change", () => {
       updateScaleNotes();
@@ -812,6 +836,7 @@ function init() {
   updateKeyBanner();
   if (tempoSlider) updateTempo();
   collapseMobileDetails();
+  refreshKeyPicker();
 }
 
 function collapseMobileDetails() {
@@ -829,6 +854,10 @@ function randomizeInitialSetup() {
   if (modeSelect) modeSelect.value = "random";
   if (styleSelect) styleSelect.value = "random";
   if (drumStyleSelect) drumStyleSelect.value = "random";
+  if (drumToggle) {
+    drumToggle.checked = true;
+    state.drumsEnabled = true;
+  }
   if (genLength) genLength.value = "4";
   if (genRhythm) genRhythm.value = "steady";
   if (bassRhythmSelect) {
@@ -872,10 +901,11 @@ function setStyle(style) {
   styleSelect.value = style;
   state.texture = preset.texture;
   state.rhythm = preset.rhythm;
-  state.drumsEnabled = preset.drums;
   textureSelect.value = state.texture;
   rhythmSelect.value = state.rhythm;
-  drumToggle.checked = state.drumsEnabled;
+  if (drumToggle) {
+    state.drumsEnabled = drumToggle.checked;
+  }
   if (toneSlider) toneSlider.value = preset.filter;
   if (state.masterFilter) state.masterFilter.frequency.setValueAtTime(preset.filter, state.audioCtx.currentTime);
 }
@@ -969,6 +999,75 @@ function updateKeyBanner() {
     keyBanner.classList.add("pulse");
   }
   if (mobileKey) mobileKey.textContent = `Key: ${state.key} ${modeLabel}`;
+  refreshKeyPicker();
+}
+
+function toggleKeyPicker() {
+  if (!keyPicker || !keyPill) return;
+  const isOpen = keyPicker.classList.contains("open");
+  if (isOpen) {
+    closeKeyPicker();
+  } else {
+    openKeyPicker();
+  }
+}
+
+function openKeyPicker() {
+  if (!keyPicker || !keyPill) return;
+  keyPicker.classList.add("open");
+  keyPicker.setAttribute("aria-hidden", "false");
+  keyPill.setAttribute("aria-expanded", "true");
+}
+
+function closeKeyPicker() {
+  if (!keyPicker || !keyPill) return;
+  keyPicker.classList.remove("open");
+  keyPicker.setAttribute("aria-hidden", "true");
+  keyPill.setAttribute("aria-expanded", "false");
+}
+
+function refreshKeyPicker() {
+  if (!keyPickerNotes) return;
+  if (!keyPickerNotes.children.length) {
+    NOTES.forEach((note) => {
+      const btn = document.createElement("button");
+      btn.textContent = note;
+      btn.addEventListener("click", () => {
+        state.key = note;
+        if (keySelect) keySelect.value = note;
+        updateKeyBanner();
+        buildChordPalette();
+        updateScaleNotes();
+        buildFretboard();
+        renderProgression();
+      });
+      keyPickerNotes.appendChild(btn);
+    });
+
+    if (keyPicker) {
+      keyPicker.querySelectorAll("[data-mode]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.mode = button.dataset.mode;
+          if (modeSelect) modeSelect.value = state.mode;
+          updateKeyBanner();
+          buildChordPalette();
+          updateScaleNotes();
+          buildFretboard();
+          renderProgression();
+        });
+      });
+    }
+  }
+
+  Array.from(keyPickerNotes.children).forEach((btn) => {
+    btn.classList.toggle("active", btn.textContent === state.key);
+  });
+
+  if (keyPicker) {
+    keyPicker.querySelectorAll("[data-mode]").forEach((button) => {
+      button.classList.toggle("active", button.dataset.mode === state.mode);
+    });
+  }
 }
 
 function updateSpicySuggestion() {
@@ -1512,10 +1611,7 @@ function applyExtensions(intervals, quality, exts = []) {
   const addSeventh = (value) => set.add(value);
   if (exts.includes("maj7")) addSeventh(11);
   if (exts.includes("7")) {
-    if (quality === "maj") addSeventh(11);
-    else if (quality === "min") addSeventh(10);
-    else if (quality === "dom") addSeventh(10);
-    else addSeventh(10);
+    addSeventh(10);
   }
   if (exts.includes("9") || exts.includes("add9")) set.add(14);
   if (exts.includes("11")) set.add(17);
@@ -1526,6 +1622,13 @@ function applyExtensions(intervals, quality, exts = []) {
 function buildChordName(baseName, exts = []) {
   const extras = exts.filter((ext) => !baseName.toLowerCase().includes(ext));
   if (extras.length === 0) return baseName;
+  if (extras.length === 1) {
+    const ext = extras[0];
+    if (["7", "9", "11", "13"].includes(ext)) return `${baseName}${ext}`;
+    if (ext === "maj7") return `${baseName}maj7`;
+    if (ext === "add9") return `${baseName}add9`;
+    if (ext === "sus4") return `${baseName}sus4`;
+  }
   return `${baseName}(${extras.join(",")})`;
 }
 
@@ -1598,7 +1701,8 @@ function startPlayback() {
   state.currentChord = 0;
   state.uiChord = 0;
   state.selectedChord = 0;
-  state.lastDrumBar = null;
+  state.drumBarCount = 0;
+  state.nextDrumTime = 0;
   updateChordEditor();
   state.fretMode = "chord";
   buildFretboard();
@@ -1635,18 +1739,29 @@ function resumePlayback() {
 
 function beginCountIn() {
   if (!state.audioCtx) return;
+  if (state.audioCtx.state === "suspended") state.audioCtx.resume();
   clearCountIn();
   state.isCountingIn = true;
   const beat = 60 / state.tempo;
   const startTime = state.audioCtx.currentTime + 0.05;
   const beats = 4;
 
+  if (DEBUG_AUDIO) {
+    console.log("[GPL] count-in start", {
+      tempo: state.tempo,
+      startTime,
+      audioTime: state.audioCtx.currentTime,
+      drumsEnabled: state.drumsEnabled,
+      drumSamplesLoaded: state.drumSamplesLoaded
+    });
+  }
+
   if (countInEl) {
     Array.from(countInEl.querySelectorAll("span")).forEach((span) => span.classList.remove("active"));
   }
 
-  // count-in drums for one bar
-  scheduleDrums(startTime, beats);
+  // count-in drums for one bar (explicit hits so it never drops)
+  scheduleCountInDrums(startTime);
 
   for (let i = 0; i < beats; i += 1) {
     const delay = (startTime - state.audioCtx.currentTime + i * beat) * 1000;
@@ -1667,7 +1782,8 @@ function beginCountIn() {
       Array.from(countInEl.querySelectorAll("span")).forEach((span) => span.classList.remove("active"));
     }
     state.nextTime = startTime + beats * beat;
-    state.lastDrumBar = null;
+    state.drumBarCount = 0;
+    state.nextDrumTime = state.nextTime;
     state.lastCountBar = null;
     const firstItem = state.progression[0];
     if (firstItem) updateNowPlaying(firstItem, chordFromItem(firstItem), 0);
@@ -1677,6 +1793,28 @@ function beginCountIn() {
 
   state.countInTimeouts.push(afterCountIn);
   updatePlayButton();
+}
+
+function scheduleCountInDrums(startTime) {
+  if (!state.drumsEnabled) return;
+  const beat = 60 / state.tempo;
+  const sound = DRUM_SOUNDS[state.drumStyle] || DRUM_SOUNDS.pop;
+  const kitName = DRUM_STYLE_KIT[state.drumStyle] || "pearl";
+  const kit = DRUM_KITS[kitName];
+  const useSamples = state.drumSamplesLoaded && kit;
+  const kickSteps = [0, 2];
+  const snareSteps = [1, 3];
+  kickSteps.forEach((step) => {
+    const hitTime = startTime + step * beat;
+    if (DEBUG_AUDIO) console.log("[GPL] count-in kick", { hitTime, useSamples });
+    if (!(useSamples && playDrumSample(kit.kick, hitTime, 0.9))) playKick(hitTime, sound);
+  });
+  snareSteps.forEach((step) => {
+    const hitTime = startTime + step * beat;
+    const snareUrl = kit?.snareA;
+    if (DEBUG_AUDIO) console.log("[GPL] count-in snare", { hitTime, useSamples });
+    if (!(useSamples && snareUrl && playDrumSample(snareUrl, hitTime, 0.8))) playSnare(hitTime, sound);
+  });
 }
 
 function clearCountIn() {
@@ -1724,14 +1862,11 @@ function schedulePlayback() {
     scheduleChord(item, chord, state.nextTime, index, item.beats);
     const duration = (60 / state.tempo) * item.beats;
     if (state.drumsEnabled) {
-      const startBar = Math.floor(state.nextTime / barLength);
-      const endBar = Math.floor((state.nextTime + duration - 0.001) / barLength);
-      for (let barIndex = startBar; barIndex <= endBar; barIndex += 1) {
-        if (state.lastDrumBar === barIndex) continue;
-        const barTime = barIndex * barLength;
-        const fill = (barIndex + 1) % 8 === 0;
-        scheduleDrums(barTime, 4, fill);
-        state.lastDrumBar = barIndex;
+      while (state.nextDrumTime < state.audioCtx.currentTime + lookAhead) {
+        const fill = (state.drumBarCount + 1) % 8 === 0;
+        scheduleDrums(state.nextDrumTime, 4, fill);
+        state.nextDrumTime += barLength;
+        state.drumBarCount += 1;
       }
     }
     const startBar = Math.floor(state.nextTime / barLength);
@@ -2086,6 +2221,9 @@ function scheduleDrums(barTime, beats = 4, fill = false) {
   const kit = DRUM_KITS[kitName];
   const useSamples = state.drumSamplesLoaded && kit;
   const barStart = barTime;
+  if (DEBUG_AUDIO) {
+    console.log("[GPL] scheduleDrums", { barStart, beats, fill, useSamples, style: state.drumStyle });
+  }
 
   pattern.kick.filter((step) => step < beats).forEach((step) => {
     const hitTime = barStart + step * beat;
@@ -2433,10 +2571,12 @@ function loadSavedProgressions() {
 function refreshSavedProgressions() {}
 
 function applyPreset({ tokens, beats = 4, mode = "major", exts = [] }) {
-  const randomKey = NOTES[Math.floor(Math.random() * NOTES.length)];
-  state.key = randomKey;
+  if (!state.keyLocked) {
+    const randomKey = NOTES[Math.floor(Math.random() * NOTES.length)];
+    state.key = randomKey;
+    if (keySelect) keySelect.value = randomKey;
+  }
   state.mode = mode;
-  if (keySelect) keySelect.value = randomKey;
   if (modeSelect) modeSelect.value = mode;
   updateKeyBanner();
 
