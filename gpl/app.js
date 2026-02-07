@@ -380,6 +380,10 @@ function init() {
   buildFretMarkers();
   updateChordEditor();
   updatePlayButton();
+  if (window.innerWidth <= 900 && fretToggle) {
+    fretToggle.checked = false;
+    fretboardGrid.classList.add("hidden");
+  }
 
   keySelect.addEventListener("change", () => {
     state.key = keySelect.value;

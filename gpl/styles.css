@@ -440,11 +440,15 @@ body {
   display: grid;
   grid-template-columns: repeat(4, minmax(140px, 1fr));
   grid-auto-rows: minmax(70px, auto);
+  overflow: hidden;
 }
 
 .progression.large .progression-item {
   min-width: 0;
   padding: 16px 18px;
+  box-sizing: border-box;
+  overflow: hidden;
+  word-break: break-word;
 }
 
 @media (max-width: 900px) {
@@ -1371,10 +1375,12 @@ input[type="text"] {
 
   .progression-item strong {
     font-size: 1.1rem;
+    display: block;
   }
 
   .progression-item span {
     font-size: 0.9rem;
+    display: block;
   }
 
   .progression-actions {
