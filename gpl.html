@@ -26,6 +26,13 @@
 
       <div class="card builder">
         <div class="card-title">Chord Progression</div>
+        <div class="preset-row">
+          <button id="presetOneChord" class="btn ghost small">One Chord Backing Track</button>
+          <button id="presetBlues" class="btn ghost small">12 Bar Blues</button>
+          <button id="presetFamous" class="btn ghost small">Famous Progression</button>
+          <button id="presetIIVI" class="btn ghost small">ii–V–I Turnaround</button>
+          <button id="presetMinorLoop" class="btn ghost small">Minor Loop</button>
+        </div>
         <div class="generator">
           <div class="generator-row">
             <div class="control-row">
@@ -246,7 +253,7 @@
         <div class="card practice-hub">
           <div class="progression-block">
             <div class="key-row">
-              <div class="key-banner">Key: <span id="currentKey">C Major</span></div>
+              <button id="keyPill" class="key-banner" type="button">Key: <span id="currentKey">C Major</span></button>
               <button id="keyLockBtn" class="key-lock" type="button" aria-pressed="false">Lock</button>
               <div class="tempo-pill">
                 <div class="tempo-label">Tempo</div>
@@ -271,13 +278,13 @@
               </div>
             </div>
           </div>
-          <details class="palette-drawer">
+          <details class="palette-drawer mobile-compact">
             <summary>Chord Palette</summary>
             <div class="palette">
               <div class="palette-head">
                 <div class="card-title">Chord Palette</div>
               </div>
-              <div class="note palette-note">Drag into progression • Tap to audition</div>
+              <div class="note palette-note">Tap or drag to add • Tap to audition</div>
               <details class="palette-section diatonic" open>
                 <summary class="sub-title">Diatonic</summary>
                 <div id="diatonicChords" class="chord-pool"></div>
@@ -340,6 +347,16 @@
     <div class="footer-meta">Total practice minutes: <span id="footerMinutes">0</span></div>
     <button id="resetMinutes" class="btn ghost small">Reset practice minutes</button>
   </footer>
+
+  <div class="mobile-transport">
+    <button id="mobilePlay" class="btn primary play">Play</button>
+    <div class="mobile-tempo">
+      <button id="tempoDownMobile" class="tempo-step" type="button">-</button>
+      <span id="tempoLabelMobile">100 bpm</span>
+      <button id="tempoUpMobile" class="tempo-step" type="button">+</button>
+    </div>
+    <div class="mobile-key" id="mobileKey">Key: C Major</div>
+  </div>
 
   <script src="gpl/app.js"></script>
 </body>

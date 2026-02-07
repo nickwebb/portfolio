@@ -20,6 +20,11 @@ const tempoSlider = document.getElementById("tempo");
 const tempoLabel = document.getElementById("tempoLabel");
 const tempoDown = document.getElementById("tempoDown");
 const tempoUp = document.getElementById("tempoUp");
+const tempoLabelMobile = document.getElementById("tempoLabelMobile");
+const tempoDownMobile = document.getElementById("tempoDownMobile");
+const tempoUpMobile = document.getElementById("tempoUpMobile");
+const mobilePlay = document.getElementById("mobilePlay");
+const mobileKey = document.getElementById("mobileKey");
 const diatonicChords = document.getElementById("diatonicChords");
 const progressionEl = document.getElementById("progression");
 const progInput = document.getElementById("progInput");
@@ -100,6 +105,11 @@ const countInEl = document.getElementById("countIn");
 const saveProgressionBtn = document.getElementById("saveProgression");
 const loadProgressionBtn = document.getElementById("loadProgression");
 const deleteProgressionBtn = document.getElementById("deleteProgression");
+const presetOneChord = document.getElementById("presetOneChord");
+const presetBlues = document.getElementById("presetBlues");
+const presetFamous = document.getElementById("presetFamous");
+const presetIIVI = document.getElementById("presetIIVI");
+const presetMinorLoop = document.getElementById("presetMinorLoop");
 
 const scrollButtons = document.querySelectorAll("[data-scroll]");
 
@@ -404,6 +414,26 @@ function init() {
     });
   }
 
+  if (tempoDownMobile) {
+    tempoDownMobile.addEventListener("click", () => {
+      const next = Math.max(parseInt(tempoSlider.min, 10), state.tempo - 1);
+      tempoSlider.value = next;
+      updateTempo();
+    });
+  }
+
+  if (tempoUpMobile) {
+    tempoUpMobile.addEventListener("click", () => {
+      const next = Math.min(parseInt(tempoSlider.max, 10), state.tempo + 1);
+      tempoSlider.value = next;
+      updateTempo();
+    });
+  }
+
+  if (mobilePlay) {
+    mobilePlay.addEventListener("click", togglePlayback);
+  }
+
   clearProg.addEventListener("click", () => {
     state.progression = [];
     renderProgression();
@@ -592,6 +622,65 @@ function init() {
     });
   }
 
+  if (presetOneChord) {
+    presetOneChord.addEventListener("click", () => {
+      applyPreset({
+        tokens: ["I"],
+        beats: 16,
+        mode: "major"
+      });
+    });
+  }
+
+  if (presetBlues) {
+    presetBlues.addEventListener("click", () => {
+      const seq = ["I", "I", "I", "I", "IV", "IV", "I", "I", "V", "IV", "I", "V"];
+      applyPreset({
+        tokens: seq,
+        beats: 4,
+        mode: "major",
+        exts: ["7"]
+      });
+    });
+  }
+
+  if (presetFamous) {
+    presetFamous.addEventListener("click", () => {
+      const presets = [
+        ["I", "V", "vi", "IV"],
+        ["vi", "IV", "I", "V"],
+        ["I", "IV", "V", "IV"],
+        ["i", "bVI", "bIII", "bVII"]
+      ];
+      const pick = presets[Math.floor(Math.random() * presets.length)];
+      applyPreset({
+        tokens: pick,
+        beats: 4,
+        mode: pick[0].includes("i") ? "minor" : "major"
+      });
+    });
+  }
+
+  if (presetIIVI) {
+    presetIIVI.addEventListener("click", () => {
+      applyPreset({
+        tokens: ["ii", "V", "I"],
+        beats: 4,
+        mode: "major"
+      });
+    });
+  }
+
+  if (presetMinorLoop) {
+    presetMinorLoop.addEventListener("click", () => {
+      applyPreset({
+        tokens: ["i", "bVI", "bIII", "bVII"],
+        beats: 4,
+        mode: "minor"
+      });
+    });
+  }
+
   if (keyLockBtn) {
     keyLockBtn.addEventListener("click", () => {
       state.keyLocked = !state.keyLocked;
@@ -720,6 +809,19 @@ function init() {
 
   refreshSavedProgressions();
   if (chordEditor) chordEditor.classList.add("hidden");
+  updateKeyBanner();
+  if (tempoSlider) updateTempo();
+  collapseMobileDetails();
+}
+
+function collapseMobileDetails() {
+  if (window.innerWidth > 900) return;
+  document.querySelectorAll(".palette-drawer").forEach((details) => {
+    details.removeAttribute("open");
+  });
+  document.querySelectorAll(".builder-details").forEach((details) => {
+    details.removeAttribute("open");
+  });
 }
 
 function randomizeInitialSetup() {
@@ -854,6 +956,7 @@ function updateChordEditor() {
 function updateTempo() {
   state.tempo = parseInt(tempoSlider.value, 10);
   tempoLabel.textContent = `${state.tempo} bpm`;
+  if (tempoLabelMobile) tempoLabelMobile.textContent = `${state.tempo} bpm`;
 }
 
 function updateKeyBanner() {
@@ -865,6 +968,7 @@ function updateKeyBanner() {
     void keyBanner.offsetWidth;
     keyBanner.classList.add("pulse");
   }
+  if (mobileKey) mobileKey.textContent = `Key: ${state.key} ${modeLabel}`;
 }
 
 function updateSpicySuggestion() {
@@ -1596,12 +1700,15 @@ function updatePlayButton() {
   if (!playBtn) return;
   if (!state.isPlaying) {
     playBtn.textContent = "Play";
+    if (mobilePlay) mobilePlay.textContent = "Play";
     return;
   }
   if (state.isCountingIn && !state.isPaused) {
     playBtn.textContent = "Count-in…";
+    if (mobilePlay) mobilePlay.textContent = "Count-in…";
   } else {
     playBtn.textContent = state.isPaused ? "Play" : "Pause";
+    if (mobilePlay) mobilePlay.textContent = state.isPaused ? "Play" : "Pause";
   }
 }
 
@@ -2324,6 +2431,20 @@ function loadSavedProgressions() {
 }
 
 function refreshSavedProgressions() {}
+
+function applyPreset({ tokens, beats = 4, mode = "major", exts = [] }) {
+  const randomKey = NOTES[Math.floor(Math.random() * NOTES.length)];
+  state.key = randomKey;
+  state.mode = mode;
+  if (keySelect) keySelect.value = randomKey;
+  if (modeSelect) modeSelect.value = mode;
+  updateKeyBanner();
+
+  state.progression = tokens.map((token) => createChordItem(token, beats, null, exts));
+  state.selectedChord = 0;
+  updateChordEditor();
+  renderProgression();
+}
 
 function bumpSessionCounters() {
   const data = JSON.parse(localStorage.getItem("fretflow_progress") || "{}");

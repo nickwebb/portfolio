@@ -242,6 +242,13 @@ body {
   gap: 20px;
 }
 
+.preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
 .card {
   background: var(--panel);
   border: 1px solid var(--stroke);
@@ -485,6 +492,42 @@ input[type="text"] {
 
 .tempo-step:hover {
   background: rgba(255, 255, 255, 0.16);
+}
+
+.mobile-transport {
+  position: sticky;
+  bottom: 16px;
+  margin: 0 8vw 20px;
+  padding: 12px 14px;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  background: rgba(11, 14, 22, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  backdrop-filter: blur(10px);
+  z-index: 20;
+}
+
+.mobile-tempo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.mobile-key {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.85);
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 140, 66, 0.2);
+  border: 1px solid rgba(255, 140, 66, 0.4);
+}
+
+.mobile-compact summary {
+  font-size: 0.8rem;
 }
 
 .tempo-label.funky span {
@@ -1175,6 +1218,25 @@ input[type="text"] {
     align-items: stretch;
   }
 
+  .control-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .control-row label,
+  .tempo-pill,
+  .key-banner,
+  .key-row,
+  .progression-actions,
+  .palette,
+  .palette-drawer,
+  .chord-editor,
+  .fretboard-block,
+  .count-in,
+  .mobile-transport {
+    max-width: 100%;
+  }
+
   .generator-row .btn {
     width: 100%;
   }
@@ -1198,8 +1260,38 @@ input[type="text"] {
     padding: 14px;
   }
 
+  .progression-item {
+    min-height: 80px;
+    padding: 14px 16px;
+  }
+
   .progression-actions {
     flex-wrap: wrap;
+  }
+
+  .progression-actions-right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .mobile-transport {
+    display: flex;
+  }
+
+  .playback.under {
+    display: none;
+  }
+
+  .count-in {
+    justify-content: center;
+  }
+
+  .fretboard-wrapper {
+    overflow-x: auto;
+  }
+
+  .fretboard {
+    min-width: 720px;
   }
 
   .palette {
@@ -1211,8 +1303,8 @@ input[type="text"] {
   }
 
   .chord-btn {
-    padding: 8px 10px;
-    font-size: 0.85rem;
+    padding: 10px 12px;
+    font-size: 0.9rem;
   }
 
   .playback.under {
@@ -1265,12 +1357,12 @@ input[type="text"] {
   }
 
   .progression-item {
-    min-width: 75%;
+    min-width: 85%;
     scroll-snap-align: start;
   }
 
   .progression-item strong {
-    font-size: 1.05rem;
+    font-size: 1.1rem;
   }
 
   .card {
