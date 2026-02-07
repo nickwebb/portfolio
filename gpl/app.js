@@ -83,6 +83,7 @@ const footerMinutes = document.getElementById("footerMinutes");
 const resetMinutes = document.getElementById("resetMinutes");
 const currentKey = document.getElementById("currentKey");
 const keyBanner = document.querySelector(".key-banner");
+const downloadMidiBtn = document.getElementById("downloadMidi");
 
 const scrollButtons = document.querySelectorAll("[data-scroll]");
 
@@ -297,6 +298,7 @@ function init() {
   refreshSpicy.addEventListener("click", updateSpicySuggestion);
 
   playBtn.addEventListener("click", togglePlayback);
+  if (downloadMidiBtn) downloadMidiBtn.addEventListener("click", downloadMidi);
 
   styleSelect.addEventListener("change", () => {
     setStyle(styleSelect.value);
@@ -1326,6 +1328,106 @@ function scheduleUiUpdate(item, chord, time, index) {
     updateNowPlaying(item, chord, index);
   }, delay);
   state.uiTimeouts.push(timeout);
+}
+
+function downloadMidi() {
+  if (!state.progression.length) return;
+  const midiData = buildMidiFile();
+  const blob = new Blob([midiData], { type: "audio/midi" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `gpl-progression-${state.key}-${state.mode}.mid`.replace(/\s+/g, "-").toLowerCase();
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 500);
+}
+
+function buildMidiFile() {
+  const ticksPerBeat = 480;
+  const tempo = state.tempo || 100;
+  const tempoUs = Math.round(60000000 / tempo);
+  const rhythm = RHYTHMS[state.rhythm] || RHYTHMS.whole;
+
+  const events = [];
+  let currentBeat = 0;
+
+  state.progression.forEach((item) => {
+    const chord = chordFromItem(item);
+    const baseMidi = noteToMidi(chord.root, 3);
+    const notes = chord.intervals.map((interval) => baseMidi + interval);
+    const beats = item.beats || 4;
+    rhythm.filter((beat) => beat < beats).forEach((beat) => {
+      const hitBeat = currentBeat + beat;
+      const noteLen = Math.max(0.35, Math.min(0.9, beats - beat));
+      const offBeat = hitBeat + noteLen;
+      notes.forEach((note) => {
+        events.push({ tick: Math.round(hitBeat * ticksPerBeat), type: "on", note, vel: 90 });
+        events.push({ tick: Math.round(offBeat * ticksPerBeat), type: "off", note, vel: 0 });
+      });
+    });
+    currentBeat += beats;
+  });
+
+  events.sort((a, b) => {
+    if (a.tick !== b.tick) return a.tick - b.tick;
+    if (a.type === b.type) return 0;
+    return a.type === "off" ? -1 : 1;
+  });
+
+  const track = [];
+  // Tempo meta event
+  track.push(...writeVarLen(0), 0xff, 0x51, 0x03, (tempoUs >> 16) & 0xff, (tempoUs >> 8) & 0xff, tempoUs & 0xff);
+
+  let lastTick = 0;
+  events.forEach((event) => {
+    const delta = event.tick - lastTick;
+    lastTick = event.tick;
+    track.push(...writeVarLen(delta));
+    if (event.type === "on") {
+      track.push(0x90, event.note & 0x7f, event.vel & 0x7f);
+    } else {
+      track.push(0x80, event.note & 0x7f, 0x00);
+    }
+  });
+
+  // End of track
+  track.push(...writeVarLen(0), 0xff, 0x2f, 0x00);
+
+  const header = [
+    0x4d, 0x54, 0x68, 0x64,
+    0x00, 0x00, 0x00, 0x06,
+    0x00, 0x00,
+    0x00, 0x01,
+    (ticksPerBeat >> 8) & 0xff,
+    ticksPerBeat & 0xff
+  ];
+
+  const trackHeader = [
+    0x4d, 0x54, 0x72, 0x6b,
+    (track.length >> 24) & 0xff,
+    (track.length >> 16) & 0xff,
+    (track.length >> 8) & 0xff,
+    track.length & 0xff
+  ];
+
+  return new Uint8Array([...header, ...trackHeader, ...track]);
+}
+
+function writeVarLen(value) {
+  let buffer = value & 0x7f;
+  const bytes = [];
+  while ((value >>= 7)) {
+    buffer <<= 8;
+    buffer |= (value & 0x7f) | 0x80;
+  }
+  while (true) {
+    bytes.push(buffer & 0xff);
+    if (buffer & 0x80) buffer >>= 8;
+    else break;
+  }
+  return bytes;
 }
 
 function updateNowPlaying(item, chord, index) {
