@@ -34,7 +34,7 @@ const applyProg = document.getElementById("applyProg");
 const clearProg = document.getElementById("clearProg");
 const shuffleProg = document.getElementById("shuffleProg");
 const playBtn = document.getElementById("playBtn");
-const restartBtn = document.getElementById("restartBtn");
+const rewindBtn = document.getElementById("rewindBtn");
 const styleSelect = document.getElementById("styleSelect");
 const textureSelect = document.getElementById("textureSelect");
 const sizeSelect = document.getElementById("sizeSelect");
@@ -111,6 +111,14 @@ const selectedChordLabel = document.getElementById("selectedChordLabel");
 const extensionButtons = document.getElementById("extensionButtons");
 const beatButtons = document.getElementById("beatButtons");
 const chordEditor = document.querySelector(".chord-editor");
+const chordPopup = document.getElementById("chordPopup");
+const chordPopupTitle = document.getElementById("chordPopupTitle");
+const chordPopupToken = document.getElementById("chordPopupToken");
+const chordPopupApply = document.getElementById("chordPopupApply");
+const chordPopupDelete = document.getElementById("chordPopupDelete");
+const chordPopupClose = document.getElementById("chordPopupClose");
+const chordPopupBeats = document.getElementById("chordPopupBeats");
+const chordPopupExts = document.getElementById("chordPopupExts");
 // chord slots are added by dragging chords into the progression
 const footerMinutes = document.getElementById("footerMinutes");
 const resetMinutes = document.getElementById("resetMinutes");
@@ -118,11 +126,16 @@ const currentKey = document.getElementById("currentKey");
 const keyBanner = document.querySelector(".key-banner");
 const keyPill = document.getElementById("keyPill");
 const formChip = document.getElementById("formChip");
+const formEditor = document.getElementById("formEditor");
+const formARepeats = document.getElementById("formARepeats");
+const formBRepeats = document.getElementById("formBRepeats");
+const formHasB = document.getElementById("formHasB");
 const keyPicker = document.getElementById("keyPicker");
 const keyPickerNotes = document.getElementById("keyPickerNotes");
 const downloadMidiBtn = document.getElementById("downloadMidi");
 const keyLockBtn = document.getElementById("keyLockBtn");
 const countInEl = document.getElementById("countIn");
+const currentRhythm = document.getElementById("currentRhythm");
 const saveProgressionBtn = document.getElementById("saveProgression");
 const loadProgressionBtn = document.getElementById("loadProgression");
 const deleteProgressionBtn = document.getElementById("deleteProgression");
@@ -138,6 +151,11 @@ const aRepeatsSelect = document.getElementById("aRepeats");
 const bRepeatsSelect = document.getElementById("bRepeats");
 
 const scrollButtons = document.querySelectorAll("[data-scroll]");
+
+function setFretboardVisibility(show) {
+  if (fretboardGrid) fretboardGrid.classList.toggle("hidden", !show);
+  if (fretboardMarkers) fretboardMarkers.classList.toggle("hidden", !show);
+}
 
 const state = {
   progression: [],
@@ -215,6 +233,8 @@ const state = {
   countInTimeouts: [],
   sampleStatusTimeout: null,
   isLoading: false,
+  lastAutoScrollSection: null,
+  selectionDirtyForPlayback: false,
   latencyProbe: null,
   latencyProbeReady: false,
   latencyProbeGain: null,
@@ -297,17 +317,17 @@ const EXTENSION_OPTIONS = ["maj7", "7", "9", "11", "13", "sus4", "add9"];
 
 const SAMPLE_LIBRARY = {
   piano: [
-    { midi: 48, url: "backing-track-generator/samples/Piano.pp.C3.wav" },
-    { midi: 60, url: "backing-track-generator/samples/Piano.pp.C4.wav" },
-    { midi: 72, url: "backing-track-generator/samples/Piano.pp.C5.wav" }
+    { midi: 48, url: "bb/samples/Piano.pp.C3.wav" },
+    { midi: 60, url: "bb/samples/Piano.pp.C4.wav" },
+    { midi: 72, url: "bb/samples/Piano.pp.C5.wav" }
   ],
   guitar: [
-    { midi: 48, url: "backing-track-generator/samples/guitar/Guitar.C3.wav" },
-    { midi: 60, url: "backing-track-generator/samples/guitar/Guitar.C4.wav" },
-    { midi: 72, url: "backing-track-generator/samples/guitar/Guitar.C5.wav" }
+    { midi: 48, url: "bb/samples/guitar/Guitar.C3.wav" },
+    { midi: 60, url: "bb/samples/guitar/Guitar.C4.wav" },
+    { midi: 72, url: "bb/samples/guitar/Guitar.C5.wav" }
   ],
   synth: [
-    { midi: 60, url: "backing-track-generator/samples/synth/pad.wav" }
+    { midi: 60, url: "bb/samples/synth/pad.wav" }
   ]
 };
 
@@ -404,37 +424,37 @@ const DRUM_PATTERN_BANK = {
 
 const DRUM_KITS = {
   pearl: {
-    kick: "backing-track-generator/samples/drums/pearl/kick-01.wav",
-    snareA: "backing-track-generator/samples/drums/pearl/snare-01.wav",
-    snareB: "backing-track-generator/samples/drums/pearl/snare-02.wav",
-    hatClosed: "backing-track-generator/samples/drums/pearl/hihat-closed.wav",
-    hatOpen: "backing-track-generator/samples/drums/pearl/hihat-open.wav"
+    kick: "bb/samples/drums/pearl/kick-01.wav",
+    snareA: "bb/samples/drums/pearl/snare-01.wav",
+    snareB: "bb/samples/drums/pearl/snare-02.wav",
+    hatClosed: "bb/samples/drums/pearl/hihat-closed.wav",
+    hatOpen: "bb/samples/drums/pearl/hihat-open.wav"
   },
   cr78: {
-    kick: "backing-track-generator/samples/drums/cr78/kick.wav",
-    snareA: "backing-track-generator/samples/drums/cr78/snare.wav",
-    hatClosed: "backing-track-generator/samples/drums/cr78/hihat.wav",
-    hatOpen: "backing-track-generator/samples/drums/cr78/hihat-metal.wav",
-    perc: "backing-track-generator/samples/drums/cr78/conga-l.wav",
-    cowbell: "backing-track-generator/samples/drums/cr78/cowbell.wav",
-    rim: "backing-track-generator/samples/drums/cr78/rim.wav",
-    tamb: "backing-track-generator/samples/drums/cr78/tamb-short.wav"
+    kick: "bb/samples/drums/cr78/kick.wav",
+    snareA: "bb/samples/drums/cr78/snare.wav",
+    hatClosed: "bb/samples/drums/cr78/hihat.wav",
+    hatOpen: "bb/samples/drums/cr78/hihat-metal.wav",
+    perc: "bb/samples/drums/cr78/conga-l.wav",
+    cowbell: "bb/samples/drums/cr78/cowbell.wav",
+    rim: "bb/samples/drums/cr78/rim.wav",
+    tamb: "bb/samples/drums/cr78/tamb-short.wav"
   },
   tr505: {
-    kick: "backing-track-generator/samples/drums/tr505/kick.wav",
-    snareA: "backing-track-generator/samples/drums/tr505/snare.wav",
-    hatClosed: "backing-track-generator/samples/drums/tr505/hat.wav",
-    hatOpen: "backing-track-generator/samples/drums/tr505/hat.wav",
-    rim: "backing-track-generator/samples/drums/tr505/rim.wav",
-    tom: "backing-track-generator/samples/drums/tr505/tom.wav"
+    kick: "bb/samples/drums/tr505/kick.wav",
+    snareA: "bb/samples/drums/tr505/snare.wav",
+    hatClosed: "bb/samples/drums/tr505/hat.wav",
+    hatOpen: "bb/samples/drums/tr505/hat.wav",
+    rim: "bb/samples/drums/tr505/rim.wav",
+    tom: "bb/samples/drums/tr505/tom.wav"
   },
   tr909: {
-    kick: "backing-track-generator/samples/drums/tr909/kick.wav",
-    snareA: "backing-track-generator/samples/drums/tr909/snare.wav",
-    hatClosed: "backing-track-generator/samples/drums/tr909/hat.wav",
-    hatOpen: "backing-track-generator/samples/drums/tr909/hat.wav",
-    rim: "backing-track-generator/samples/drums/tr909/rim.wav",
-    tom: "backing-track-generator/samples/drums/tr909/tom.wav"
+    kick: "bb/samples/drums/tr909/kick.wav",
+    snareA: "bb/samples/drums/tr909/snare.wav",
+    hatClosed: "bb/samples/drums/tr909/hat.wav",
+    hatOpen: "bb/samples/drums/tr909/hat.wav",
+    rim: "bb/samples/drums/tr909/rim.wav",
+    tom: "bb/samples/drums/tr909/tom.wav"
   }
 };
 
@@ -506,7 +526,7 @@ function init() {
   } catch (error) {
     // ignore malformed UI prefs
   }
-  fretboardGrid.classList.toggle("hidden", !fretToggle.checked);
+  setFretboardVisibility(!!fretToggle?.checked);
   initProgressionLibrary();
   buildFretMarkers();
   updateChordEditor();
@@ -605,6 +625,84 @@ function init() {
       updateSectionControls();
     });
   }
+  if (formChip) {
+    formChip.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleFormEditor();
+    });
+  }
+  if (formARepeats) {
+    formARepeats.addEventListener("change", () => {
+      state.aRepeats = Math.max(1, parseInt(formARepeats.value, 10) || 2);
+      if (aRepeatsSelect) aRepeatsSelect.value = String(state.aRepeats);
+      if (!state.isPlaying) state.playbackSequence = buildPlaybackSequence();
+      updateSectionControls();
+    });
+  }
+  if (formBRepeats) {
+    formBRepeats.addEventListener("change", () => {
+      state.bRepeats = Math.max(1, parseInt(formBRepeats.value, 10) || 2);
+      if (bRepeatsSelect) bRepeatsSelect.value = String(state.bRepeats);
+      if (!state.isPlaying) state.playbackSequence = buildPlaybackSequence();
+      updateSectionControls();
+    });
+  }
+  if (formHasB) {
+    formHasB.addEventListener("change", () => {
+      syncActiveSectionFromProgression();
+      if (formHasB.checked) {
+        if (!state.hasBSection || getSectionProgression("B").length === 0) {
+          generateBSectionFromCorpus();
+        }
+      } else {
+        state.sectionB = [];
+        state.hasBSection = false;
+        if (state.activeSection === "B") {
+          state.activeSection = "A";
+          state.progression = getSectionProgression("A");
+        }
+      }
+      if (!state.isPlaying) state.playbackSequence = buildPlaybackSequence();
+      updateSectionControls();
+      renderProgression();
+    });
+  }
+  document.addEventListener("click", (event) => {
+    if (!formEditor || !formChip) return;
+    if (event.target.closest("#formEditor") || event.target.closest("#formChip")) return;
+    closeFormEditor();
+  });
+  if (chordPopupClose) chordPopupClose.addEventListener("click", closeChordPopup);
+  if (chordPopupApply) chordPopupApply.addEventListener("click", applyPopupChordToken);
+  if (chordPopupToken) {
+    chordPopupToken.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        applyPopupChordToken();
+      }
+    });
+  }
+  if (chordPopupDelete) {
+    chordPopupDelete.addEventListener("click", () => {
+      if (!state.progression.length) return;
+      state.progression.splice(state.selectedChord, 1);
+      if (state.selectedChord >= state.progression.length) {
+        state.selectedChord = Math.max(0, state.progression.length - 1);
+      }
+      if (state.progression.length === 0) {
+        if (state.activeSection === "B") state.sectionB = [];
+        else state.sectionA = [];
+        closeChordPopup();
+      }
+      persistSelectedChordChange();
+    });
+  }
+  document.addEventListener("click", (event) => {
+    if (!chordPopup || chordPopup.classList.contains("hidden")) return;
+    if (event.target.closest("#chordPopup") || event.target.closest(".progression-item")) return;
+    closeChordPopup();
+  });
+  window.addEventListener("resize", () => positionChordPopup());
 
   clearProg.addEventListener("click", () => {
     state.progression = [];
@@ -647,30 +745,7 @@ function init() {
   refreshSpicy.addEventListener("click", updateSpicySuggestion);
 
   playBtn.addEventListener("click", togglePlayback);
-  if (restartBtn) {
-    restartBtn.addEventListener("click", async () => {
-      if (!state.audioCtx) initAudio();
-      const wasPlaying = state.isPlaying;
-      state.isLoading = true;
-      updatePlayButton();
-      await ensureSamplesReady();
-      state.isLoading = false;
-      updatePlayButton();
-      resetTransportTimeline();
-      updateChordEditor();
-      renderProgression();
-      if (!wasPlaying) {
-        await startPlayback();
-        return;
-      }
-      if (state.pauseStartTime) {
-        state.pausedTotalMs += Date.now() - state.pauseStartTime;
-        state.pauseStartTime = null;
-      }
-      state.isPaused = false;
-      beginCountIn();
-    });
-  }
+  if (rewindBtn) rewindBtn.addEventListener("click", rewindToStart);
   if (downloadMidiBtn) downloadMidiBtn.addEventListener("click", downloadMidi);
 
   styleSelect.addEventListener("change", () => {
@@ -1084,7 +1159,7 @@ function init() {
   if (highlightSelect) highlightSelect.addEventListener("change", buildFretboard);
   if (positionSelect) positionSelect.addEventListener("change", buildFretboard);
   fretToggle.addEventListener("change", () => {
-    fretboardGrid.classList.toggle("hidden", !fretToggle.checked);
+    setFretboardVisibility(fretToggle.checked);
     try {
       localStorage.setItem(UI_PREFS_KEY, JSON.stringify({ showFretboard: fretToggle.checked }));
     } catch (error) {
@@ -1567,6 +1642,36 @@ function switchActiveSection(section) {
   updateSectionControls();
 }
 
+function syncFormEditorControls() {
+  if (formARepeats) formARepeats.value = String(state.aRepeats || 2);
+  if (formHasB) formHasB.checked = !!state.hasBSection;
+  if (formBRepeats) {
+    formBRepeats.value = String(state.bRepeats || 2);
+    formBRepeats.disabled = !state.hasBSection;
+  }
+}
+
+function openFormEditor() {
+  if (!formEditor || !formChip) return;
+  formEditor.classList.remove("hidden");
+  formEditor.setAttribute("aria-hidden", "false");
+  formChip.setAttribute("aria-expanded", "true");
+  syncFormEditorControls();
+}
+
+function closeFormEditor() {
+  if (!formEditor || !formChip) return;
+  formEditor.classList.add("hidden");
+  formEditor.setAttribute("aria-hidden", "true");
+  formChip.setAttribute("aria-expanded", "false");
+}
+
+function toggleFormEditor() {
+  if (!formEditor) return;
+  if (formEditor.classList.contains("hidden")) openFormEditor();
+  else closeFormEditor();
+}
+
 function updateSectionControls() {
   if (editSectionABtn) editSectionABtn.classList.toggle("active", state.activeSection === "A");
   if (editSectionBBtn) editSectionBBtn.classList.toggle("active", state.activeSection === "B");
@@ -1582,6 +1687,213 @@ function updateSectionControls() {
       : `Form: A x ${state.aRepeats || 2}`;
     formChip.textContent = formText;
   }
+  syncFormEditorControls();
+  updateRhythmReadout(state.activeSection);
+}
+
+function getSelectedPlaybackTarget() {
+  const section = state.activeSection === "B" && state.hasBSection ? "B" : "A";
+  const pool = getSectionProgression(section);
+  const maxIndex = Math.max(0, pool.length - 1);
+  const sectionIndex = Math.min(Math.max(0, state.selectedChord || 0), maxIndex);
+  return { section, sectionIndex };
+}
+
+function getPlaybackStartIndex(sequence, section, sectionIndex) {
+  if (!sequence || sequence.length === 0) return 0;
+  const idx = sequence.findIndex((entry) => entry.section === section && entry.sectionIndex === sectionIndex);
+  return idx >= 0 ? idx : 0;
+}
+
+function primePlaybackFromSelectedChord() {
+  const sequence = state.playbackSequence && state.playbackSequence.length ? state.playbackSequence : buildPlaybackSequence();
+  state.playbackSequence = sequence;
+  const target = getSelectedPlaybackTarget();
+  const startIndex = getPlaybackStartIndex(sequence, target.section, target.sectionIndex);
+  state.currentChord = startIndex;
+  state.uiChord = target.sectionIndex;
+  state.playingSection = target.section;
+  state.selectedChord = target.sectionIndex;
+  state.lastVoicing = null;
+  state.lastCountBar = null;
+  state.drumBarCount = 0;
+  state.nextDrumTime = 0;
+  state.selectionDirtyForPlayback = false;
+}
+
+function formatRhythmLabel(rhythmName) {
+  const map = {
+    whole: "Whole",
+    halves: "Halves",
+    quarters: "Quarter Pulse",
+    eighths: "Eighth Drive",
+    syncopated: "Syncopated",
+    offbeat: "Offbeat",
+    answer: "Call + Answer",
+    split: "High/Low Comp",
+    chop: "Backbeat Chop",
+    push: "Push Accents",
+    tresillo: "Tresillo",
+    habanera: "Habanera",
+    clave: "Clave",
+    sparse: "Sparse",
+    rockStrum: "Rock Strum"
+  };
+  return map[rhythmName] || rhythmName;
+}
+
+function updateRhythmReadout(section = state.activeSection) {
+  if (!currentRhythm) return;
+  currentRhythm.textContent = formatRhythmLabel(getRhythmNameForSection(section));
+}
+
+function rewindToStart() {
+  syncActiveSectionFromProgression();
+  state.activeSection = "A";
+  state.progression = getSectionProgression("A");
+  state.selectedChord = 0;
+  state.selectionDirtyForPlayback = true;
+  state.editorPinned = false;
+  closeChordPopup();
+  updateChordEditor();
+  renderProgression();
+  updateRhythmReadout("A");
+
+  if (!state.isPlaying) return;
+  if (state.pauseStartTime) {
+    state.pausedTotalMs += Date.now() - state.pauseStartTime;
+    state.pauseStartTime = null;
+  }
+  state.isPaused = false;
+  resetTransportTimeline();
+  primePlaybackFromSelectedChord();
+  state.lastAutoScrollSection = null;
+  scrollToSectionOnMobile("A", true);
+  beginCountIn();
+}
+
+function getSelectedChordElement() {
+  return document.querySelector(`.progression-item[data-section="${state.activeSection}"][data-index="${state.selectedChord}"]`);
+}
+
+function positionChordPopup(anchor = null) {
+  if (!chordPopup || chordPopup.classList.contains("hidden")) return;
+  const mobile = window.innerWidth <= 900;
+  chordPopup.style.top = "";
+  chordPopup.style.left = "";
+  chordPopup.style.right = "";
+  chordPopup.style.bottom = "";
+  chordPopup.style.width = "";
+  if (mobile) {
+    chordPopup.style.left = "12px";
+    chordPopup.style.right = "12px";
+    chordPopup.style.bottom = "12px";
+    return;
+  }
+  const target = anchor || getSelectedChordElement();
+  const rect = target ? target.getBoundingClientRect() : { left: 20, top: 120, bottom: 160 };
+  const pad = 12;
+  const panelWidth = Math.min(340, window.innerWidth - pad * 2);
+  chordPopup.style.width = `${panelWidth}px`;
+  let left = Math.max(pad, Math.min(rect.left, window.innerWidth - panelWidth - pad));
+  const panelHeight = chordPopup.offsetHeight || 260;
+  let top = rect.bottom + 10;
+  if (top + panelHeight > window.innerHeight - pad) top = Math.max(pad, rect.top - panelHeight - 10);
+  chordPopup.style.left = `${left}px`;
+  chordPopup.style.top = `${top}px`;
+}
+
+function syncChordPopup() {
+  if (!chordPopup || chordPopup.classList.contains("hidden")) return;
+  const item = state.progression[state.selectedChord];
+  if (!item) {
+    closeChordPopup();
+    return;
+  }
+  const description = describeItem(item);
+  if (chordPopupTitle) chordPopupTitle.textContent = `${description.label} • ${description.name}`;
+  if (chordPopupToken && document.activeElement !== chordPopupToken) chordPopupToken.value = item.token;
+
+  if (chordPopupBeats) {
+    chordPopupBeats.innerHTML = "";
+    [1, 2, 3, 4, 6, 8, 16].forEach((beat) => {
+      const btn = document.createElement("button");
+      btn.className = "btn ghost small";
+      btn.type = "button";
+      btn.textContent = String(beat);
+      if (item.beats === beat) btn.classList.add("active");
+      btn.addEventListener("click", () => {
+        const current = state.progression[state.selectedChord];
+        if (!current) return;
+        current.beats = beat;
+        persistSelectedChordChange();
+      });
+      chordPopupBeats.appendChild(btn);
+    });
+  }
+
+  if (chordPopupExts) {
+    chordPopupExts.innerHTML = "";
+    EXTENSION_OPTIONS.forEach((ext) => {
+      const btn = document.createElement("button");
+      btn.className = "btn ghost small";
+      btn.type = "button";
+      btn.textContent = ext;
+      if (item.exts.includes(ext)) btn.classList.add("active");
+      btn.addEventListener("click", () => {
+        const current = state.progression[state.selectedChord];
+        if (!current) return;
+        const next = Array.isArray(current.exts) ? current.exts.slice() : [];
+        if (next.includes(ext)) current.exts = next.filter((value) => value !== ext);
+        else current.exts = next.concat(ext);
+        persistSelectedChordChange();
+      });
+      chordPopupExts.appendChild(btn);
+    });
+  }
+}
+
+function openChordPopup(anchor = null) {
+  if (!chordPopup) return;
+  chordPopup.classList.remove("hidden");
+  chordPopup.setAttribute("aria-hidden", "false");
+  syncChordPopup();
+  positionChordPopup(anchor);
+}
+
+function closeChordPopup() {
+  if (!chordPopup) return;
+  chordPopup.classList.add("hidden");
+  chordPopup.setAttribute("aria-hidden", "true");
+}
+
+function persistSelectedChordChange() {
+  if (state.activeSection === "B") state.sectionB = normalizeProgression(state.progression);
+  else state.sectionA = normalizeProgression(state.progression);
+  state.playbackSequence = buildPlaybackSequence();
+  state.selectionDirtyForPlayback = true;
+  updateChordEditor();
+  renderProgression();
+  syncChordPopup();
+  positionChordPopup();
+}
+
+function applyPopupChordToken() {
+  if (!chordPopupToken) return;
+  const raw = chordPopupToken.value.trim();
+  if (!raw) return;
+  const current = state.progression[state.selectedChord];
+  if (!current) return;
+  const { core, beats } = parseTokenBeat(raw);
+  const romanParsed = parseRomanToken(core);
+  if (romanParsed) {
+    current.token = romanParsed.token;
+    if (romanParsed.exts.length) current.exts = romanParsed.exts;
+  } else {
+    current.token = core;
+  }
+  if (raw.includes(":")) current.beats = beats;
+  persistSelectedChordChange();
 }
 
 function generateBSectionFromCorpus() {
@@ -1946,10 +2258,12 @@ function renderProgression() {
         if (event.target.classList.contains("remove-chord")) return;
         switchActiveSection(section);
         state.selectedChord = idx;
-        state.editorPinned = true;
-        if (chordEditor) chordEditor.classList.remove("hidden");
+        state.selectionDirtyForPlayback = true;
+        state.editorPinned = false;
+        if (chordEditor) chordEditor.classList.add("hidden");
         updateChordEditor();
         renderProgression();
+        openChordPopup();
       });
       itemEl.querySelector(".remove-chord").addEventListener("click", (event) => {
         event.stopPropagation();
@@ -1974,15 +2288,21 @@ function renderProgression() {
   else state.progression = sectionB;
   updateSectionControls();
   syncProgressionInput();
+  if (chordPopup && !chordPopup.classList.contains("hidden")) {
+    syncChordPopup();
+    positionChordPopup();
+  }
 }
 
 document.addEventListener("click", (event) => {
   if (!chordEditor) return;
   const clickedChord = event.target.closest(".progression-item");
   const clickedEditor = event.target.closest(".chord-editor");
-  if (clickedChord || clickedEditor) return;
+  const clickedPopup = event.target.closest("#chordPopup");
+  if (clickedChord || clickedEditor || clickedPopup) return;
   state.editorPinned = false;
   chordEditor.classList.add("hidden");
+  closeChordPopup();
 });
 
 function formatBeatLabel(beats) {
@@ -2494,26 +2814,26 @@ async function startPlayback() {
 
   state.isPlaying = true;
   state.isPaused = false;
-  state.currentChord = 0;
-  state.uiChord = 0;
-  state.playingSection = state.activeSection;
-  state.selectedChord = 0;
-  state.drumBarCount = 0;
-  state.nextDrumTime = 0;
+  state.lastAutoScrollSection = null;
+  primePlaybackFromSelectedChord();
   updateChordEditor();
   state.fretMode = "chord";
   buildFretboard();
   if (!state.sessionTimerId) startSession();
-  scrollToASectionOnMobile();
+  const firstSection = state.playingSection || state.activeSection || "A";
+  scrollToSectionOnMobile(firstSection, true);
   beginCountIn();
 }
 
-function scrollToASectionOnMobile() {
+function scrollToSectionOnMobile(section = "A", force = false) {
   if (window.innerWidth > 900) return;
-  const heading = document.querySelector('.progression-section[data-section="A"] .progression-section-head');
-  const target = heading || progressionAEl;
+  if (!force && state.lastAutoScrollSection === section) return;
+  const heading = document.querySelector(`.progression-section[data-section="${section}"] .progression-section-head`);
+  const fallback = section === "B" ? progressionBEl : progressionAEl;
+  const target = heading || fallback;
   if (!target || typeof target.scrollIntoView !== "function") return;
   const run = () => target.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
+  state.lastAutoScrollSection = section;
   if (typeof requestAnimationFrame === "function") requestAnimationFrame(run);
   else setTimeout(run, 0);
 }
@@ -2537,10 +2857,17 @@ function pausePlayback() {
 
 function resumePlayback() {
   if (!state.isPlaying || !state.isPaused) return;
-  state.isPaused = false;
   if (state.pauseStartTime) {
     state.pausedTotalMs += Date.now() - state.pauseStartTime;
     state.pauseStartTime = null;
+  }
+  state.isPaused = false;
+  if (state.selectionDirtyForPlayback) {
+    syncActiveSectionFromProgression();
+    state.playbackSequence = buildPlaybackSequence();
+    primePlaybackFromSelectedChord();
+    state.lastAutoScrollSection = null;
+    scrollToSectionOnMobile(state.playingSection || "A", true);
   }
   beginCountIn();
 }
@@ -2593,8 +2920,15 @@ function beginCountIn() {
     state.drumBarCount = 0;
     state.nextDrumTime = state.nextTime;
     state.lastCountBar = null;
-    const firstEntry = state.playbackSequence[0];
-    if (firstEntry?.item) updateNowPlaying(firstEntry.item, chordFromItem(firstEntry.item), 0, firstEntry.section, firstEntry.sectionIndex);
+    const firstEntry = state.playbackSequence[state.currentChord % state.playbackSequence.length];
+    if (firstEntry?.item) {
+      updateNowPlaying(
+        firstEntry.item,
+        chordFromItem(firstEntry.item),
+        firstEntry.sectionIndex,
+        firstEntry.section
+      );
+    }
     state.timerId = setInterval(schedulePlayback, 25);
     updatePlayButton();
   }, (startTime - state.audioCtx.currentTime + beats * beat) * 1000);
@@ -3536,7 +3870,7 @@ function downloadMidi() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `gpl-progression-${state.key}-${state.mode}.mid`.replace(/\s+/g, "-").toLowerCase();
+  link.download = `backing-buddy-progression-${state.key}-${state.mode}.mid`.replace(/\s+/g, "-").toLowerCase();
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -3706,6 +4040,8 @@ function writeVarLen(value) {
 }
 
 function updateNowPlaying(item, chord, index, section = state.activeSection) {
+  scrollToSectionOnMobile(section);
+  updateRhythmReadout(section);
   if (state.hasBSection && state.activeSection !== section && !state.editorPinned) {
     state.activeSection = section;
     state.progression = section === "B" ? getSectionProgression("B") : getSectionProgression("A");

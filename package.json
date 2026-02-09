@@ -4,7 +4,7 @@
   "description": "",
   "main": "script.js",
   "scripts": {
-    "test": "node --test backing-track-generator/tests/*.test.js"
+    "test": "node --test bb/tests/*.test.js"
   },
   "repository": {
     "type": "git",

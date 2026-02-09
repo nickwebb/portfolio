@@ -237,6 +237,12 @@ body {
   width: 100%;
 }
 
+.card.fretboard-card {
+  max-width: 1200px;
+  margin: 14px auto 0;
+  width: 100%;
+}
+
 .card.builder {
   padding: 21px 22px;
 }
@@ -771,6 +777,12 @@ input[type="text"] {
   flex-wrap: wrap;
 }
 
+#generateProg.btn.primary.play {
+  padding: 11px 18px;
+  font-size: 0.93rem;
+  box-shadow: 0 12px 26px rgba(255, 94, 168, 0.32);
+}
+
 .generator-row .control-row {
   flex: 1;
   min-width: 260px;
@@ -1041,6 +1053,43 @@ input[type="text"] {
   border-color: rgba(42, 212, 255, 0.6);
 }
 
+.chord-popup {
+  position: fixed;
+  z-index: 30;
+  min-width: 280px;
+  max-width: 340px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(10, 13, 20, 0.96);
+  box-shadow: 0 18px 32px rgba(0, 0, 0, 0.35);
+  display: grid;
+  gap: 10px;
+}
+
+.chord-popup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chord-popup-title {
+  font-size: 0.82rem;
+  color: rgba(223, 227, 241, 0.95);
+  font-weight: 600;
+}
+
+.chord-popup-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chord-popup .btn.small {
+  padding: 7px 12px;
+}
+
 .progression {
   min-height: 60px;
   display: flex;
@@ -1205,16 +1254,49 @@ input[type="text"] {
 }
 
 .transport-mini .btn.primary.play {
-  padding: 11px 18px;
-  font-size: 0.95rem;
-  box-shadow: 0 12px 26px rgba(255, 94, 168, 0.35);
+  padding: 13px 22px;
+  font-size: 1rem;
+  box-shadow: 0 14px 30px rgba(255, 94, 168, 0.38);
 }
 
 .transport-mini .btn.ghost {
-  padding: 9px 14px;
+  padding: 11px 16px;
+  font-size: 0.93rem;
+}
+
+.transport-mini .btn.rewind {
+  min-width: 42px;
+  padding: 10px 12px;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.transport-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.transport-meta .count-in {
+  margin-top: 0;
+}
+
+.rhythm-pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(186, 192, 212, 0.85);
+  font-size: 0.74rem;
+  letter-spacing: 0.3px;
 }
 
 .form-chip {
+  appearance: none;
+  cursor: pointer;
+  font-family: inherit;
   margin-top: 2px;
   padding: 7px 10px;
   width: fit-content;
@@ -1224,6 +1306,41 @@ input[type="text"] {
   color: rgba(170, 177, 198, 0.8);
   font-size: 0.78rem;
   letter-spacing: 0.35px;
+}
+
+.form-chip:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: rgba(219, 223, 236, 0.95);
+}
+
+.form-chip-wrap {
+  position: relative;
+  width: fit-content;
+}
+
+.form-editor {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 12;
+  min-width: 210px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(10, 13, 20, 0.96);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
+  display: grid;
+  gap: 8px;
+}
+
+.form-editor label {
+  font-size: 0.75rem;
+  gap: 6px;
+}
+
+.form-editor select {
+  padding: 7px 9px;
+  border-radius: 10px;
 }
 
 .count-in {
@@ -1392,6 +1509,11 @@ input[type="text"] {
   margin: 0 auto;
 }
 
+.footer.footer-credits {
+  justify-content: center;
+  align-items: center;
+}
+
 .footer-meta {
   font-size: 0.95rem;
 }
@@ -1400,6 +1522,7 @@ input[type="text"] {
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.52);
   white-space: nowrap;
+  text-align: center;
 }
 
 @media (max-width: 900px) {
@@ -1525,8 +1648,27 @@ input[type="text"] {
     display: none;
   }
 
+  .chord-popup {
+    left: 12px !important;
+    right: 12px !important;
+    bottom: 12px !important;
+    top: auto !important;
+    max-width: none;
+    min-width: 0;
+    max-height: 62vh;
+    overflow: auto;
+  }
+
   .count-in {
     justify-content: center;
+  }
+
+  .transport-meta {
+    justify-content: flex-start;
+  }
+
+  .rhythm-pill {
+    font-size: 0.72rem;
   }
 
   .fretboard-wrapper {
@@ -1557,6 +1699,10 @@ input[type="text"] {
   .footer {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .footer.footer-credits {
+    align-items: center;
   }
 
   .footer-attribution {

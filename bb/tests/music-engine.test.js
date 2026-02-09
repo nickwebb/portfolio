@@ -57,7 +57,7 @@ function makeElement() {
 }
 
 function loadEngine() {
-  const codePath = "/Users/nick/codex/portfolio/backing-track-generator/app.js";
+  const codePath = "/Users/nick/codex/portfolio/bb/app.js";
   let code = fs.readFileSync(codePath, "utf8");
   code = code.replace(/\ninit\(\);\s*$/, "\n");
   code += `
