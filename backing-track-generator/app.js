@@ -146,8 +146,8 @@ const state = {
   hasBSection: false,
   activeSection: "A",
   playingSection: "A",
-  aRepeats: 8,
-  bRepeats: 8,
+  aRepeats: 2,
+  bRepeats: 2,
   playbackSequence: [],
   tempo: 100,
   key: "C",
@@ -273,6 +273,24 @@ const RHYTHMS = {
   clave: [0, 1.5, 2.5, 3],
   sparse: [0, 2.5],
   rockStrum: [0, 0.5, 1.5, 2, 2.5, 3.5]
+};
+
+const B_SECTION_RHYTHM_VARIANTS = {
+  whole: "halves",
+  halves: "quarters",
+  quarters: "offbeat",
+  eighths: "syncopated",
+  rockStrum: "answer",
+  syncopated: "answer",
+  offbeat: "syncopated",
+  answer: "offbeat",
+  split: "answer",
+  chop: "push",
+  push: "syncopated",
+  tresillo: "habanera",
+  habanera: "tresillo",
+  clave: "habanera",
+  sparse: "halves"
 };
 
 const EXTENSION_OPTIONS = ["maj7", "7", "9", "11", "13", "sus4", "add9"];
@@ -575,14 +593,14 @@ function init() {
   }
   if (aRepeatsSelect) {
     aRepeatsSelect.addEventListener("change", () => {
-      state.aRepeats = Math.max(1, parseInt(aRepeatsSelect.value, 10) || 8);
+      state.aRepeats = Math.max(1, parseInt(aRepeatsSelect.value, 10) || 2);
       if (!state.isPlaying) state.playbackSequence = buildPlaybackSequence();
       updateSectionControls();
     });
   }
   if (bRepeatsSelect) {
     bRepeatsSelect.addEventListener("change", () => {
-      state.bRepeats = Math.max(1, parseInt(bRepeatsSelect.value, 10) || 8);
+      state.bRepeats = Math.max(1, parseInt(bRepeatsSelect.value, 10) || 2);
       if (!state.isPlaying) state.playbackSequence = buildPlaybackSequence();
       updateSectionControls();
     });
@@ -1305,7 +1323,9 @@ function updateChordEditor() {
     if (state.editorPinned) chordEditor.classList.remove("hidden");
     else chordEditor.classList.add("hidden");
   }
-  const item = state.progression[state.selectedChord] || state.progression[0];
+  const selectedIndex = Math.min(Math.max(0, state.selectedChord || 0), state.progression.length - 1);
+  state.selectedChord = selectedIndex;
+  const item = state.progression[selectedIndex];
   const description = describeItem(item);
   selectedChordLabel.textContent = `${description.name} • ${description.label}`;
   if (!state.isPlaying) {
@@ -1322,13 +1342,20 @@ function updateChordEditor() {
     btn.textContent = ext;
     if (item.exts.includes(ext)) btn.classList.add("active");
     btn.addEventListener("click", () => {
+      const current = state.progression[state.selectedChord];
+      if (!current) return;
+      const nextExts = Array.isArray(current.exts) ? current.exts.slice() : [];
       if (item.exts.includes(ext)) {
-        item.exts = item.exts.filter((value) => value !== ext);
+        current.exts = nextExts.filter((value) => value !== ext);
       } else {
-        item.exts.push(ext);
+        nextExts.push(ext);
+        current.exts = nextExts;
       }
+      if (state.activeSection === "B") state.sectionB = normalizeProgression(state.progression);
+      else state.sectionA = normalizeProgression(state.progression);
+      state.playbackSequence = buildPlaybackSequence();
       if (!state.isPlaying) {
-        const chord = chordFromItem(item);
+        const chord = chordFromItem(current);
         state.currentChordNotes = new Set(chord.intervals.map((interval) => noteAt(chord.root, interval)));
         state.currentChordRoot = chord.root;
       }
@@ -1346,7 +1373,12 @@ function updateChordEditor() {
     btn.textContent = beat;
     if (item.beats === beat) btn.classList.add("active");
     btn.addEventListener("click", () => {
-      item.beats = beat;
+      const current = state.progression[state.selectedChord];
+      if (!current) return;
+      current.beats = beat;
+      if (state.activeSection === "B") state.sectionB = normalizeProgression(state.progression);
+      else state.sectionA = normalizeProgression(state.progression);
+      state.playbackSequence = buildPlaybackSequence();
       renderProgression();
       updateChordEditor();
     });
@@ -1542,12 +1574,12 @@ function updateSectionControls() {
   if (bRepeatsSelect) bRepeatsSelect.disabled = !state.hasBSection;
   if (progressionSectionBEl) progressionSectionBEl.classList.toggle("hidden", !state.hasBSection);
   if (addBSectionBtn) addBSectionBtn.textContent = state.hasBSection ? "Regenerate B Section" : "Add B Section";
-  if (aRepeatsSelect) aRepeatsSelect.value = String(state.aRepeats || 8);
-  if (bRepeatsSelect) bRepeatsSelect.value = String(state.bRepeats || 8);
+  if (aRepeatsSelect) aRepeatsSelect.value = String(state.aRepeats || 2);
+  if (bRepeatsSelect) bRepeatsSelect.value = String(state.bRepeats || 2);
   if (formChip) {
     const formText = state.hasBSection
-      ? `Form: A x ${state.aRepeats || 8} • B x ${state.bRepeats || 8}`
-      : `Form: A x ${state.aRepeats || 8}`;
+      ? `Form: A x ${state.aRepeats || 2} • B x ${state.bRepeats || 2}`
+      : `Form: A x ${state.aRepeats || 2}`;
     formChip.textContent = formText;
   }
 }
@@ -1576,8 +1608,8 @@ function buildPlaybackSequence() {
   const a = getSectionProgression("A");
   const b = state.hasBSection ? getSectionProgression("B") : [];
   const sequence = [];
-  const aLoops = Math.max(1, state.aRepeats || 8);
-  const bLoops = Math.max(1, state.bRepeats || 8);
+  const aLoops = Math.max(1, state.aRepeats || 2);
+  const bLoops = Math.max(1, state.bRepeats || 2);
   for (let loop = 0; loop < aLoops; loop += 1) {
     a.forEach((item, idx) => sequence.push({ item, section: "A", sectionIndex: idx }));
   }
@@ -1591,6 +1623,20 @@ function buildPlaybackSequence() {
     fallback.forEach((item, idx) => sequence.push({ item, section: state.activeSection, sectionIndex: idx }));
   }
   return sequence;
+}
+
+function getRhythmNameForSection(section = "A") {
+  if (section !== "B" || !state.hasBSection) return state.rhythm;
+  return B_SECTION_RHYTHM_VARIANTS[state.rhythm] || state.rhythm;
+}
+
+function getDrumPatternForSection(section = "A") {
+  const patterns = DRUM_PATTERN_BANK[state.drumStyle] || DRUM_PATTERN_BANK.pop;
+  const active = state.drumPattern || patterns[0];
+  if (section !== "B" || !state.hasBSection || patterns.length < 2) return active;
+  const activeIndex = patterns.indexOf(active);
+  if (activeIndex < 0) return patterns[1] || active;
+  return patterns[(activeIndex + 1) % patterns.length];
 }
 
 function weightedPick(items, weightFn = (item) => item.weight || 1) {
@@ -2458,7 +2504,18 @@ async function startPlayback() {
   state.fretMode = "chord";
   buildFretboard();
   if (!state.sessionTimerId) startSession();
+  scrollToASectionOnMobile();
   beginCountIn();
+}
+
+function scrollToASectionOnMobile() {
+  if (window.innerWidth > 900) return;
+  const heading = document.querySelector('.progression-section[data-section="A"] .progression-section-head');
+  const target = heading || progressionAEl;
+  if (!target || typeof target.scrollIntoView !== "function") return;
+  const run = () => target.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(run);
+  else setTimeout(run, 0);
 }
 
 function pausePlayback() {
@@ -2646,7 +2703,7 @@ function schedulePlayback() {
     if (state.drumsEnabled) {
       while (state.nextDrumTime < state.audioCtx.currentTime + lookAhead) {
         const fill = (state.drumBarCount + 1) % 8 === 0;
-        scheduleDrums(state.nextDrumTime, 4, fill);
+        scheduleDrums(state.nextDrumTime, 4, fill, entry.section);
         state.nextDrumTime += barLength;
         state.drumBarCount += 1;
       }
@@ -2693,12 +2750,13 @@ function scheduleChord(item, chord, time, index, beats, section = state.activeSe
   const baseNotes = intervals.map((interval) => baseMidi + interval);
   const notes = getVoiceLedNotes(baseNotes, chord, baseMidi);
   const duration = (60 / state.tempo) * beats;
-  const rhythm = getChordRhythm(beats);
+  const rhythmName = getRhythmNameForSection(section);
+  const rhythm = getChordRhythm(beats, section);
   const isGuitar = state.sampleInstrument.startsWith("guitar");
   const isPiano = state.sampleInstrument === "piano";
   const useRealistic = isGuitar && state.realisticGuitar;
   const strumSpread = useRealistic ? 0.06 : 0.02;
-  const isWhole = state.rhythm === "whole";
+  const isWhole = rhythmName === "whole";
   const beatDur = 60 / state.tempo;
   const hitTimes = rhythm.map((beat) => time + beatDur * beat);
   const splitGroups = getSplitCompGroups(notes);
@@ -2869,8 +2927,9 @@ function getVoiceLedNotes(baseNotes, chord, baseMidi) {
   return best;
 }
 
-function getChordRhythm(beats) {
-  const base = (RHYTHMS[state.rhythm] || RHYTHMS.whole).filter((step) => step < beats);
+function getChordRhythm(beats, section = "A") {
+  const rhythmName = getRhythmNameForSection(section);
+  const base = (RHYTHMS[rhythmName] || RHYTHMS.whole).filter((step) => step < beats);
   if (base.length <= 1) return base;
   const pattern = base.slice();
   if (Math.random() < 0.35) {
@@ -3364,9 +3423,9 @@ function createDriveCurve(amount) {
   return curve;
 }
 
-function scheduleDrums(barTime, beats = 4, fill = false) {
+function scheduleDrums(barTime, beats = 4, fill = false, section = "A") {
   if (!state.audioCtx || !state.drumBus || !state.drumsEnabled) return;
-  const pattern = state.drumPattern || (DRUM_PATTERN_BANK[state.drumStyle] || DRUM_PATTERN_BANK.pop)[0];
+  const pattern = getDrumPatternForSection(section);
   const sound = DRUM_SOUNDS[state.drumStyle] || DRUM_SOUNDS.pop;
   const beat = 60 / state.tempo;
   const kitName = DRUM_STYLE_KIT[state.drumStyle] || "pearl";
@@ -3488,71 +3547,147 @@ function buildMidiFile() {
   const ticksPerBeat = 480;
   const tempo = state.tempo || 100;
   const tempoUs = Math.round(60000000 / tempo);
-  const rhythm = RHYTHMS[state.rhythm] || RHYTHMS.whole;
+  const bassRhythm = BASS_RHYTHMS[state.bassRhythm] || BASS_RHYTHMS.steady;
+  const sequence = buildPlaybackSequence();
 
-  const events = [];
+  const chordEvents = [];
+  const bassEvents = [];
+  const drumEvents = [];
+  const sectionTimeline = [];
   let currentBeat = 0;
 
-  state.progression.forEach((item) => {
+  sequence.forEach((entry) => {
+    const item = entry.item;
+    const beats = item.beats || 4;
+    sectionTimeline.push({ startBeat: currentBeat, endBeat: currentBeat + beats, section: entry.section });
     const chord = chordFromItem(item);
     const baseMidi = noteToMidi(chord.root, 3);
     const notes = chord.intervals.map((interval) => baseMidi + interval);
-    const beats = item.beats || 4;
-    rhythm.filter((beat) => beat < beats).forEach((beat) => {
-      const hitBeat = currentBeat + beat;
-      const noteLen = Math.max(0.35, Math.min(0.9, beats - beat));
+    const chordRhythm = RHYTHMS[getRhythmNameForSection(entry.section)] || RHYTHMS.whole;
+
+    chordRhythm.filter((step) => step < beats).forEach((step) => {
+      const hitBeat = currentBeat + step;
+      const noteLen = Math.max(0.35, Math.min(0.9, beats - step));
       const offBeat = hitBeat + noteLen;
       notes.forEach((note) => {
-        events.push({ tick: Math.round(hitBeat * ticksPerBeat), type: "on", note, vel: 90 });
-        events.push({ tick: Math.round(offBeat * ticksPerBeat), type: "off", note, vel: 0 });
+        chordEvents.push({ tick: Math.round(hitBeat * ticksPerBeat), type: "on", note, vel: 92 });
+        chordEvents.push({ tick: Math.round(offBeat * ticksPerBeat), type: "off", note, vel: 0 });
       });
     });
+
+    const bassRoot = noteToMidi(chord.root, 2);
+    let cursor = 0;
+    while (cursor < beats) {
+      const windowBeats = Math.min(4, beats - cursor);
+      const windowStart = currentBeat + cursor;
+      bassRhythm.forEach((step) => {
+        if (step >= windowBeats) return;
+        const hitBeat = windowStart + step;
+        const dur = state.bassRhythm === "eighths" ? 0.45 : 0.85;
+        const offBeat = hitBeat + dur;
+        bassEvents.push({ tick: Math.round(hitBeat * ticksPerBeat), type: "on", note: bassRoot, vel: 84 });
+        bassEvents.push({ tick: Math.round(offBeat * ticksPerBeat), type: "off", note: bassRoot, vel: 0 });
+      });
+      cursor += windowBeats;
+    }
+
     currentBeat += beats;
   });
 
-  events.sort((a, b) => {
-    if (a.tick !== b.tick) return a.tick - b.tick;
-    if (a.type === b.type) return 0;
-    return a.type === "off" ? -1 : 1;
-  });
+  const totalBeats = currentBeat;
+  const totalBars = Math.ceil(totalBeats / 4);
+  const getSectionAtBeat = (beatTime) => {
+    const match = sectionTimeline.find((item) => beatTime >= item.startBeat && beatTime < item.endBeat);
+    return match?.section || "A";
+  };
+  for (let bar = 0; bar < totalBars; bar += 1) {
+    const barStart = bar * 4;
+    const section = getSectionAtBeat(barStart);
+    const drumPattern = getDrumPatternForSection(section);
+    const fill = (bar + 1) % 8 === 0;
+    const fillSnare = fill ? [1.5, 2, 2.5, 3, 3.5] : [];
+    const snareSteps = Array.from(new Set([1, 3, ...(drumPattern.snare || []), ...fillSnare]));
+    const addDrumNote = (step, note, velocity, length = 0.12) => {
+      const beatTime = barStart + step;
+      if (beatTime >= totalBeats) return;
+      const startTick = Math.round(beatTime * ticksPerBeat);
+      const endTick = Math.round((beatTime + length) * ticksPerBeat);
+      drumEvents.push({ tick: startTick, type: "on", note, vel: velocity });
+      drumEvents.push({ tick: endTick, type: "off", note, vel: 0 });
+    };
+    (drumPattern.kick || []).forEach((step) => addDrumNote(step, 36, 108)); // C1 kick
+    snareSteps.forEach((step) => addDrumNote(step, 38, 96)); // D1 snare
+    (drumPattern.hat || []).forEach((step) => addDrumNote(step, 42, 70, 0.06)); // F#1 closed hat
+    (drumPattern.hatOpen || []).forEach((step) => addDrumNote(step, 46, 76, 0.14)); // A#1 open hat
+    (drumPattern.perc || []).forEach((step) => addDrumNote(step, 75, 78, 0.1)); // D#2 clave-ish perc
+  }
 
-  const track = [];
-  // Tempo meta event
-  track.push(...writeVarLen(0), 0xff, 0x51, 0x03, (tempoUs >> 16) & 0xff, (tempoUs >> 8) & 0xff, tempoUs & 0xff);
-
-  let lastTick = 0;
-  events.forEach((event) => {
-    const delta = event.tick - lastTick;
-    lastTick = event.tick;
-    track.push(...writeVarLen(delta));
-    if (event.type === "on") {
-      track.push(0x90, event.note & 0x7f, event.vel & 0x7f);
-    } else {
-      track.push(0x80, event.note & 0x7f, 0x00);
-    }
-  });
-
-  // End of track
-  track.push(...writeVarLen(0), 0xff, 0x2f, 0x00);
+  const tempoTrack = buildTempoTrack(tempoUs);
+  const chordTrack = buildNoteTrack(chordEvents, 0);
+  const bassTrack = buildNoteTrack(bassEvents, 1);
+  const drumTrack = buildNoteTrack(drumEvents, 9);
 
   const header = [
     0x4d, 0x54, 0x68, 0x64,
     0x00, 0x00, 0x00, 0x06,
-    0x00, 0x00,
-    0x00, 0x01,
+    0x00, 0x01, // format 1, parallel tracks
+    0x00, 0x04, // tempo + chords + bass + drums
     (ticksPerBeat >> 8) & 0xff,
     ticksPerBeat & 0xff
   ];
 
-  const trackHeader = [
-    0x4d, 0x54, 0x72, 0x6b,
-    (track.length >> 24) & 0xff,
-    (track.length >> 16) & 0xff,
-    (track.length >> 8) & 0xff,
-    track.length & 0xff
-  ];
+  return new Uint8Array([
+    ...header,
+    ...encodeTrackChunk(tempoTrack),
+    ...encodeTrackChunk(chordTrack),
+    ...encodeTrackChunk(bassTrack),
+    ...encodeTrackChunk(drumTrack)
+  ]);
+}
 
-  return new Uint8Array([...header, ...trackHeader, ...track]);
+function buildTempoTrack(tempoUs) {
+  return [
+    ...writeVarLen(0),
+    0xff, 0x51, 0x03,
+    (tempoUs >> 16) & 0xff,
+    (tempoUs >> 8) & 0xff,
+    tempoUs & 0xff,
+    ...writeVarLen(0),
+    0xff, 0x2f, 0x00
+  ];
+}
+
+function buildNoteTrack(events, channel) {
+  const sorted = events.slice().sort((a, b) => {
+    if (a.tick !== b.tick) return a.tick - b.tick;
+    if (a.type === b.type) return 0;
+    return a.type === "off" ? -1 : 1;
+  });
+  const bytes = [];
+  let lastTick = 0;
+  sorted.forEach((event) => {
+    const delta = Math.max(0, event.tick - lastTick);
+    lastTick = event.tick;
+    bytes.push(...writeVarLen(delta));
+    if (event.type === "on") {
+      bytes.push((0x90 | (channel & 0x0f)), event.note & 0x7f, event.vel & 0x7f);
+    } else {
+      bytes.push((0x80 | (channel & 0x0f)), event.note & 0x7f, 0x00);
+    }
+  });
+  bytes.push(...writeVarLen(0), 0xff, 0x2f, 0x00);
+  return bytes;
+}
+
+function encodeTrackChunk(trackBytes) {
+  return [
+    0x4d, 0x54, 0x72, 0x6b,
+    (trackBytes.length >> 24) & 0xff,
+    (trackBytes.length >> 16) & 0xff,
+    (trackBytes.length >> 8) & 0xff,
+    trackBytes.length & 0xff,
+    ...trackBytes
+  ];
 }
 
 function writeVarLen(value) {
