@@ -79,6 +79,17 @@ body {
   gap: 14px;
 }
 
+.brand-logo {
+  gap: 10px;
+}
+
+.logo-pick {
+  width: 31px;
+  height: 35px;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 8px 14px rgba(255, 94, 168, 0.22));
+}
+
 .logo {
   width: 48px;
   height: 48px;
@@ -103,6 +114,8 @@ body {
   letter-spacing: 1px;
   background: linear-gradient(120deg, #ff8c42, #ff5ea8, #2ad4ff);
   -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
   color: transparent;
   text-shadow: 0 12px 35px rgba(255, 94, 168, 0.25);
 }
@@ -443,27 +456,53 @@ body {
 }
 
 .key-lock {
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.8);
-  padding: 8px 14px;
-  border-radius: 999px;
-  font-size: 0.82rem;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #ffb85f;
+  padding: 0 2px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  box-shadow: none;
+  margin-bottom: 6px;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.key-lock svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.key-lock .icon-locked {
+  display: none;
+}
+
+.key-lock .icon-unlocked {
+  display: block;
 }
 
 .key-lock:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 18px rgba(255, 140, 66, 0.2);
+  color: #ffd08a;
+  opacity: 1;
 }
 
 .key-lock[aria-pressed="true"] {
-  background: rgba(255, 140, 66, 0.25);
-  border-color: rgba(255, 140, 66, 0.55);
-  color: #fff0dc;
+  color: #ffe2ae;
+}
+
+.key-lock[aria-pressed="true"] .icon-locked {
+  display: block;
+}
+
+.key-lock[aria-pressed="true"] .icon-unlocked {
+  display: none;
 }
 
 .progression.large {
@@ -922,6 +961,10 @@ input[type="text"] {
   margin-top: 10px;
 }
 
+.builder-details > summary {
+  font-size: 0.82rem;
+}
+
 .chord-pool {
   display: flex;
   flex-wrap: wrap;
@@ -1284,6 +1327,9 @@ input[type="text"] {
 }
 
 .rhythm-pill {
+  appearance: none;
+  cursor: pointer;
+  font-family: inherit;
   padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -1291,6 +1337,41 @@ input[type="text"] {
   color: rgba(186, 192, 212, 0.85);
   font-size: 0.74rem;
   letter-spacing: 0.3px;
+}
+
+.rhythm-pill:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: rgba(219, 223, 236, 0.95);
+}
+
+.rhythm-wrap {
+  position: relative;
+  width: fit-content;
+}
+
+.rhythm-editor {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 12;
+  min-width: 220px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(10, 13, 20, 0.96);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
+  display: grid;
+  gap: 8px;
+}
+
+.rhythm-editor label {
+  font-size: 0.75rem;
+  gap: 6px;
+}
+
+.rhythm-editor select {
+  padding: 7px 9px;
+  border-radius: 10px;
 }
 
 .form-chip {
@@ -1444,9 +1525,25 @@ input[type="text"] {
 }
 
 .fretboard {
+  --fret-gap: 4px;
   display: grid;
   grid-template-columns: repeat(13, 1fr);
-  gap: 4px;
+  gap: var(--fret-gap);
+  position: relative;
+}
+
+.fretboard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc((100% - (12 * var(--fret-gap))) / 13 + (var(--fret-gap) / 2));
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(245, 245, 236, 0.66), rgba(224, 224, 214, 0.56));
+  box-shadow: 0 0 3px rgba(235, 235, 225, 0.08);
+  pointer-events: none;
+  z-index: 2;
 }
 
 .hidden {
@@ -1537,6 +1634,11 @@ input[type="text"] {
 
   .brand-title.glow {
     font-size: 1.5rem;
+  }
+
+  .logo-pick {
+    width: 27px;
+    height: 31px;
   }
 
   .section {

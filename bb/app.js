@@ -136,6 +136,9 @@ const downloadMidiBtn = document.getElementById("downloadMidi");
 const keyLockBtn = document.getElementById("keyLockBtn");
 const countInEl = document.getElementById("countIn");
 const currentRhythm = document.getElementById("currentRhythm");
+const rhythmChip = document.getElementById("rhythmChip");
+const rhythmEditor = document.getElementById("rhythmEditor");
+const rhythmQuick = document.getElementById("rhythmQuick");
 const saveProgressionBtn = document.getElementById("saveProgression");
 const loadProgressionBtn = document.getElementById("loadProgression");
 const deleteProgressionBtn = document.getElementById("deleteProgression");
@@ -155,6 +158,18 @@ const scrollButtons = document.querySelectorAll("[data-scroll]");
 function setFretboardVisibility(show) {
   if (fretboardGrid) fretboardGrid.classList.toggle("hidden", !show);
   if (fretboardMarkers) fretboardMarkers.classList.toggle("hidden", !show);
+}
+
+function updateKeyLockButton() {
+  if (!keyLockBtn) return;
+  keyLockBtn.setAttribute("aria-pressed", String(state.keyLocked));
+  if (state.keyLocked) {
+    keyLockBtn.setAttribute("aria-label", "Key locked. Click to unlock key");
+    keyLockBtn.setAttribute("title", "Key locked");
+  } else {
+    keyLockBtn.setAttribute("aria-label", "Key unlocked. Click to lock key");
+    keyLockBtn.setAttribute("title", "Key unlocked");
+  }
 }
 
 const state = {
@@ -531,6 +546,7 @@ function init() {
   buildFretMarkers();
   updateChordEditor();
   updatePlayButton();
+  syncRhythmQuickOptions();
   applySavedSampleAlignment();
   if (window.innerWidth <= 900 && chordEditor) {
     state.editorPinned = false;
@@ -593,6 +609,18 @@ function init() {
   if (mobilePlay) {
     mobilePlay.addEventListener("click", togglePlayback);
   }
+  if (rhythmChip) {
+    rhythmChip.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleRhythmEditor();
+    });
+  }
+  if (rhythmQuick) {
+    rhythmQuick.addEventListener("change", () => {
+      applyRhythmSelection(rhythmQuick.value);
+      closeRhythmEditor();
+    });
+  }
 
   if (editSectionABtn) {
     editSectionABtn.addEventListener("click", () => {
@@ -628,6 +656,7 @@ function init() {
   if (formChip) {
     formChip.addEventListener("click", (event) => {
       event.stopPropagation();
+      closeRhythmEditor();
       toggleFormEditor();
     });
   }
@@ -671,6 +700,11 @@ function init() {
     if (!formEditor || !formChip) return;
     if (event.target.closest("#formEditor") || event.target.closest("#formChip")) return;
     closeFormEditor();
+  });
+  document.addEventListener("click", (event) => {
+    if (!rhythmEditor || !rhythmChip) return;
+    if (event.target.closest("#rhythmEditor") || event.target.closest("#rhythmChip")) return;
+    closeRhythmEditor();
   });
   if (chordPopupClose) chordPopupClose.addEventListener("click", closeChordPopup);
   if (chordPopupApply) chordPopupApply.addEventListener("click", applyPopupChordToken);
@@ -765,11 +799,7 @@ function init() {
   });
 
   rhythmSelect.addEventListener("change", () => {
-    state.rhythm = rhythmSelect.value;
-    if (["split", "answer", "chop"].includes(state.rhythm)) {
-      state.texture = "split";
-      if (textureSelect) textureSelect.value = "split";
-    }
+    applyRhythmSelection(rhythmSelect.value);
   });
 
   toneSlider.addEventListener("input", () => {
@@ -1117,8 +1147,7 @@ function init() {
   if (keyLockBtn) {
     keyLockBtn.addEventListener("click", () => {
       state.keyLocked = !state.keyLocked;
-      keyLockBtn.setAttribute("aria-pressed", String(state.keyLocked));
-      keyLockBtn.textContent = state.keyLocked ? "Locked" : "Lock";
+      updateKeyLockButton();
     });
   }
 
@@ -1280,7 +1309,7 @@ function init() {
   if (state.bassBusGain) {
     state.bassBusGain.gain.value = state.bassLevel;
   }
-  if (keyLockBtn) keyLockBtn.setAttribute("aria-pressed", String(state.keyLocked));
+  updateKeyLockButton();
 
   refreshSavedProgressions();
   if (chordEditor) chordEditor.classList.add("hidden");
@@ -1361,6 +1390,8 @@ function setStyle(style) {
   state.rhythm = preset.rhythm;
   textureSelect.value = state.texture;
   rhythmSelect.value = state.rhythm;
+  syncRhythmQuickOptions();
+  updateRhythmReadout(state.activeSection);
   if (drumToggle) {
     state.drumsEnabled = drumToggle.checked;
   }
@@ -1382,6 +1413,8 @@ function applyInstrumentDefaults(randomize = false) {
   }
   if (textureSelect) textureSelect.value = state.texture;
   if (rhythmSelect) rhythmSelect.value = state.rhythm;
+  syncRhythmQuickOptions();
+  updateRhythmReadout(state.activeSection);
 }
 
 function updateChordEditor() {
@@ -1745,6 +1778,53 @@ function formatRhythmLabel(rhythmName) {
 function updateRhythmReadout(section = state.activeSection) {
   if (!currentRhythm) return;
   currentRhythm.textContent = formatRhythmLabel(getRhythmNameForSection(section));
+}
+
+function syncRhythmQuickOptions() {
+  if (!rhythmQuick || !rhythmSelect) return;
+  if (rhythmQuick.options.length === 0) {
+    Array.from(rhythmSelect.options).forEach((option) => {
+      const quick = document.createElement("option");
+      quick.value = option.value;
+      quick.textContent = option.textContent;
+      rhythmQuick.appendChild(quick);
+    });
+  }
+  rhythmQuick.value = state.rhythm;
+}
+
+function applyRhythmSelection(value) {
+  if (!value) return;
+  state.rhythm = value;
+  if (rhythmSelect) rhythmSelect.value = value;
+  if (rhythmQuick) rhythmQuick.value = value;
+  if (["split", "answer", "chop"].includes(state.rhythm)) {
+    state.texture = "split";
+    if (textureSelect) textureSelect.value = "split";
+  }
+  updateRhythmReadout(state.activeSection);
+}
+
+function openRhythmEditor() {
+  if (!rhythmEditor || !rhythmChip) return;
+  closeFormEditor();
+  syncRhythmQuickOptions();
+  rhythmEditor.classList.remove("hidden");
+  rhythmEditor.setAttribute("aria-hidden", "false");
+  rhythmChip.setAttribute("aria-expanded", "true");
+}
+
+function closeRhythmEditor() {
+  if (!rhythmEditor || !rhythmChip) return;
+  rhythmEditor.classList.add("hidden");
+  rhythmEditor.setAttribute("aria-hidden", "true");
+  rhythmChip.setAttribute("aria-expanded", "false");
+}
+
+function toggleRhythmEditor() {
+  if (!rhythmEditor) return;
+  if (rhythmEditor.classList.contains("hidden")) openRhythmEditor();
+  else closeRhythmEditor();
 }
 
 function rewindToStart() {
