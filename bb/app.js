@@ -1,6 +1,8 @@
 const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const FLAT_NOTES = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
 const FLAT_EQUIV = { "Db": "C#", "Eb": "D#", "Gb": "F#", "Ab": "G#", "Bb": "A#" };
+const FRIENDLY_KEYS = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
+const ENHARMONIC_DISPLAY_MAP = { "A#": "Bb", "D#": "Eb", "G#": "Ab" };
 const MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11];
 const MINOR_SCALE = [0, 2, 3, 5, 7, 8, 10];
 const MODE_DATA = {
@@ -161,6 +163,14 @@ const scrollButtons = document.querySelectorAll("[data-scroll]");
 function setFretboardVisibility(show) {
   if (fretboardGrid) fretboardGrid.classList.toggle("hidden", !show);
   if (fretboardMarkers) fretboardMarkers.classList.toggle("hidden", !show);
+}
+
+function normalizeKeyDisplay(note) {
+  return ENHARMONIC_DISPLAY_MAP[note] || note;
+}
+
+function getRandomKeyName() {
+  return FRIENDLY_KEYS[Math.floor(Math.random() * FRIENDLY_KEYS.length)];
 }
 
 function updateKeyLockButton() {
@@ -399,6 +409,33 @@ const DIATONIC_ROMANS = {
   major: new Set(["I", "ii", "iii", "IV", "V", "vi", "vii°"]),
   minor: new Set(["i", "ii°", "III", "iv", "v", "VI", "VII"])
 };
+
+function isDiatonicRomanToken(token, mode = state.mode) {
+  const parsed = romanToDegree(token);
+  if (!parsed) return false;
+  if (DIATONIC_ROMANS[mode]?.has(token)) return true;
+  if (mode === "minor" && parsed.accidental === -1 && (parsed.degree === 2 || parsed.degree === 5 || parsed.degree === 6)) {
+    return true;
+  }
+  return false;
+}
+
+function toDiatonicRomanToken(token, mode = state.mode) {
+  if (isDiatonicRomanToken(token, mode)) {
+    if (mode === "minor") {
+      if (token === "bIII") return "III";
+      if (token === "bVI") return "VI";
+      if (token === "bVII") return "VII";
+    }
+    return token;
+  }
+  if (mode === "major") {
+    const map = { bVII: "V", bVI: "vi", bIII: "iii", iv: "IV", bII: "ii", "#iv°": "vii°" };
+    return map[token] || "I";
+  }
+  const map = { V: "v", bII: "ii°", bVI: "VI", bVII: "VII", bIII: "III" };
+  return map[token] || "i";
+}
 
 const DRUM_PATTERN_BANK = {
   pop: [
@@ -1564,12 +1601,12 @@ function closeKeyPicker() {
 function refreshKeyPicker() {
   if (!keyPickerNotes) return;
   if (!keyPickerNotes.children.length) {
-    NOTES.forEach((note) => {
+    FRIENDLY_KEYS.forEach((note) => {
       const btn = document.createElement("button");
       btn.textContent = note;
       btn.addEventListener("click", () => {
-        state.key = note;
-        if (keySelect) keySelect.value = note;
+        state.key = normalizeKeyDisplay(note);
+        if (keySelect) keySelect.value = FLAT_EQUIV[state.key] || state.key;
         updateKeyBanner();
         buildChordPalette();
         updateScaleNotes();
@@ -2066,9 +2103,9 @@ function weightedPick(items, weightFn = (item) => item.weight || 1) {
   return items[items.length - 1];
 }
 
-function buildTransitionMap(mode) {
+function buildTransitionMap(mode, corpusEntries = null) {
   const map = {};
-  const corpus = SONG_CORPUS[mode] || [];
+  const corpus = corpusEntries || SONG_CORPUS[mode] || [];
   corpus.forEach((entry) => {
     const tokens = entry.tokens || [];
     const weight = entry.weight || 1;
@@ -2115,8 +2152,13 @@ function suggestNextTokenFromCorpus(previousToken, mode = state.mode) {
 }
 
 function chooseMusicalProgression(length, mode, spice) {
-  const corpus = SONG_CORPUS[mode] || SONG_CORPUS.major;
-  const transitionMap = buildTransitionMap(mode);
+  const source = SONG_CORPUS[mode] || SONG_CORPUS.major;
+  let corpus = source;
+  if (spice === "none") {
+    const filtered = source.filter((entry) => (entry.tokens || []).every((token) => isDiatonicRomanToken(token, mode)));
+    if (filtered.length > 0) corpus = filtered;
+  }
+  const transitionMap = buildTransitionMap(mode, corpus);
   const tonic = mode === "major" ? "I" : "i";
   const seed = weightedPick(corpus, (entry) => entry.weight || 1) || { tokens: [tonic] };
   let picks = [];
@@ -2148,7 +2190,7 @@ function chooseMusicalProgression(length, mode, spice) {
   let replaced = 0;
   for (let i = 1; i < picks.length - 1 && replaced < spiceCap; i += 1) {
     if (Math.random() >= spiceChance) continue;
-    if (!DIATONIC_ROMANS[mode].has(picks[i])) continue;
+    if (!isDiatonicRomanToken(picks[i], mode)) continue;
     picks[i] = borrowedPool[Math.floor(Math.random() * borrowedPool.length)];
     replaced += 1;
   }
@@ -2156,6 +2198,10 @@ function chooseMusicalProgression(length, mode, spice) {
   if (picks.length > 0 && picks[0] !== tonic && picks[picks.length - 1] !== tonic) {
     if (Math.random() < 0.5) picks[0] = tonic;
     else picks[picks.length - 1] = tonic;
+  }
+
+  if (spice === "none") {
+    picks = picks.map((token) => toDiatonicRomanToken(token, mode));
   }
 
   return picks.slice(0, length);
@@ -2186,10 +2232,10 @@ function generateProgression() {
   if (tempoLabel) tempoLabel.textContent = `${randomTempo} bpm`;
   if (tempoLabelMobile) tempoLabelMobile.textContent = `${randomTempo} bpm`;
 
-  const randomKey = NOTES[Math.floor(Math.random() * NOTES.length)];
+  const randomKey = getRandomKeyName();
   const chosenKey = state.keyLocked ? state.key : randomKey;
-  state.key = chosenKey;
-  if (keySelect) keySelect.value = chosenKey;
+  state.key = normalizeKeyDisplay(chosenKey);
+  if (keySelect) keySelect.value = FLAT_EQUIV[state.key] || state.key;
 
   const modeOptions = ["major", "minor"];
   const chosenMode = modeSelect?.value === "random" ? modeOptions[Math.floor(Math.random() * modeOptions.length)] : modeSelect?.value || "major";
@@ -2532,7 +2578,7 @@ function syncProgressionInput() {
 }
 
 function parseRomanToken(token) {
-  const match = token.match(/^([ivIV]+°?)(.*)$/);
+  const match = token.match(/^([b#]?[ivIV]+°?)(.*)$/);
   if (!match) return null;
   const roman = match[1];
   if (!romanToDegree(roman)) return null;
@@ -2619,26 +2665,23 @@ function shouldUseFlatsForToken(token) {
 }
 
 function romanToDegree(token) {
-  const normalized = token.replace(/[^IViv°b]/g, "");
-  const accidental = normalized.startsWith("b") ? -1 : 0;
-  const stripped = normalized.replace("b", "");
+  const normalized = token.replace(/[^IViv°b#]/g, "");
+  const match = normalized.match(/^([b#]?)([IViv]+°?)$/);
+  if (!match) return null;
+  const accidentalToken = match[1];
+  let stripped = match[2];
+  const accidental = accidentalToken === "b" ? -1 : accidentalToken === "#" ? 1 : 0;
+  if (stripped.endsWith("°")) stripped = stripped.slice(0, -1);
   const degreeMap = {
     "I": 0,
-    "ii": 1,
-    "iii": 2,
+    "II": 1,
+    "III": 2,
     "IV": 3,
     "V": 4,
-    "vi": 5,
-    "vii°": 6,
-    "ii°": 1,
-    "i": 0,
-    "III": 2,
-    "iv": 3,
-    "v": 4,
     "VI": 5,
     "VII": 6
   };
-  const degree = degreeMap[stripped] ?? null;
+  const degree = degreeMap[stripped.toUpperCase()] ?? null;
   if (degree === null) return null;
   return { degree, accidental };
 }
@@ -2649,9 +2692,9 @@ function chordFromDegree(token) {
   const scale = state.mode === "major" ? MAJOR_SCALE : MINOR_SCALE;
   const { degree } = parsed;
   let { accidental } = parsed;
-  // In minor keys, VI and VII are already flat relative to major.
-  // Treat bVI/bVII as diatonic VI/VII so we don't double-flat them.
-  if (state.mode === "minor" && accidental === -1 && (degree === 5 || degree === 6)) {
+  // In natural minor, III/VI/VII are already flat relative to major.
+  // Treat bIII/bVI/bVII as diatonic to avoid double-flatting.
+  if (state.mode === "minor" && accidental === -1 && (degree === 2 || degree === 5 || degree === 6)) {
     accidental = 0;
   }
   const root = noteAt(state.key, scale[degree] + accidental, shouldUseFlatsForToken(token));
@@ -2727,8 +2770,9 @@ function describeItem(item) {
   const roman = romanToDegree(item.token);
   if (roman) {
     const chord = chordFromDegree(item.token);
-    const base = formatChordName(chord.root, MODE_DATA[state.mode].qualities[roman.degree], state.chordSize);
-    return { label: item.token, name: buildChordName(base, item.exts) };
+    const base = formatChordName(chord.root, chord.quality, state.chordSize);
+    const label = isDiatonicRomanToken(item.token, state.mode) ? item.token : `Spicy (${item.token})`;
+    return { label, name: buildChordName(base, item.exts) };
   }
   const parsed = parseChordName(item.token);
   if (parsed) {
@@ -4063,11 +4107,36 @@ function downloadMidi() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `backing-buddy-progression-${state.key}-${state.mode}.mid`.replace(/\s+/g, "-").toLowerCase();
+  const keyPart = `${state.key}-${state.mode}`;
+  const tempoPart = `${state.tempo || 100}bpm`;
+  const progressionPart = buildProgressionFilenamePart();
+  const rawName = `backing-buddy-${keyPart}-${tempoPart}-${progressionPart}`.toLowerCase();
+  link.download = `${sanitizeFilenamePart(rawName, 180)}.mid`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   setTimeout(() => URL.revokeObjectURL(url), 500);
+}
+
+function buildProgressionFilenamePart() {
+  const toToken = (item) => {
+    const beatLabel = item.beats && item.beats !== 4 ? `${item.beats}` : "";
+    return `${item.token}${beatLabel}`;
+  };
+  const sectionA = getSectionProgression("A").map(toToken).join("-");
+  if (!state.hasBSection) return `a-${sectionA || "progression"}`;
+  const sectionB = getSectionProgression("B").map(toToken).join("-");
+  return `a-${sectionA || "progression"}-b-${sectionB || "progression"}`;
+}
+
+function sanitizeFilenamePart(value, maxLength = 180) {
+  const normalized = value
+    .replace(/#/g, "sharp")
+    .replace(/[^a-z0-9-]+/gi, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  if (normalized.length <= maxLength) return normalized;
+  return normalized.slice(0, maxLength).replace(/-+$/g, "");
 }
 
 function buildMidiFile() {
@@ -4394,9 +4463,9 @@ function refreshSavedProgressions() {}
 
 function applyPreset({ tokens, beats = 4, mode = "major", exts = [] }) {
   if (!state.keyLocked) {
-    const randomKey = NOTES[Math.floor(Math.random() * NOTES.length)];
-    state.key = randomKey;
-    if (keySelect) keySelect.value = randomKey;
+    const randomKey = getRandomKeyName();
+    state.key = normalizeKeyDisplay(randomKey);
+    if (keySelect) keySelect.value = FLAT_EQUIV[state.key] || state.key;
   }
   state.mode = mode;
   if (modeSelect) modeSelect.value = mode;
