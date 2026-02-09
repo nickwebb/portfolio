@@ -83,18 +83,6 @@
                   <span id="tempoLabel">100 bpm</span>
                 </div>
               </div>
-              <button
-                id="refreshProgression"
-                class="key-refresh"
-                type="button"
-                aria-label="Refresh chord progression"
-                title="Refresh progression"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M20 6v6h-6" />
-                  <path d="M20 12a8 8 0 1 1-2.3-5.7L20 8.6" />
-                </svg>
-              </button>
               <div class="playback transport-mini">
                 <button id="playBtn" class="btn primary play">Play</button>
                 <button id="rewindBtn" class="btn ghost rewind" type="button" aria-label="Rewind to start">⏮</button>
@@ -499,6 +487,18 @@
   </footer>
 
   <div class="mobile-transport">
+    <button
+      id="refreshProgression"
+      class="btn ghost mobile-refresh"
+      type="button"
+      aria-label="Refresh chord progression"
+      title="Refresh progression"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M20 6v6h-6" />
+        <path d="M20 12a8 8 0 1 1-2.3-5.7L20 8.6" />
+      </svg>
+    </button>
     <button id="mobilePlay" class="btn primary play">Play</button>
     <button id="mobileRewind" class="btn ghost mobile-icon" type="button" aria-label="Rewind to start">
       <svg viewBox="0 0 24 24" aria-hidden="true">

@@ -842,15 +842,31 @@ input[type="text"] {
   z-index: 40;
 }
 
-.mobile-transport::before {
-  content: "";
-  grid-column: 1;
-  width: 42px;
-  height: 1px;
-}
-
 .mobile-transport .btn {
   min-height: 42px;
+}
+
+.mobile-transport .mobile-refresh {
+  grid-column: 1;
+  justify-self: start;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-transport .mobile-refresh svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.9;
 }
 
 .mobile-transport .btn.primary.play {
@@ -1999,8 +2015,8 @@ input[type="text"] {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
-    padding-right: 44px;
+    gap: 10px;
+    padding-right: 0;
   }
 
   .key-pill-wrap {
@@ -2009,8 +2025,21 @@ input[type="text"] {
   }
 
   .key-lock {
-    margin-left: 2px;
+    margin-left: 4px;
     margin-bottom: 0;
+    min-width: 28px;
+    min-height: 28px;
+  }
+
+  .key-lock svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  .key-banner {
+    min-height: 52px;
+    padding: 12px 18px;
+    font-size: 1.1rem;
   }
 
   .key-refresh {
@@ -2029,14 +2058,15 @@ input[type="text"] {
     flex-basis: 100%;
     width: 100%;
     justify-content: flex-start;
-    padding: 8px 10px;
+    padding: 10px 12px;
     overflow: hidden;
+    min-height: 50px;
   }
 
   .tempo-pill .tempo-wrap {
     flex: 1;
     display: grid;
-    grid-template-columns: 36px minmax(0, 1fr) 36px auto;
+    grid-template-columns: 44px minmax(0, 1fr) 44px auto;
     align-items: center;
     column-gap: 10px;
     min-width: 0;
@@ -2049,10 +2079,10 @@ input[type="text"] {
   }
 
   .tempo-step {
-    width: 36px;
-    height: 36px;
-    flex: 0 0 36px;
-    font-size: 1.08rem;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    font-size: 1.2rem;
   }
 
   .progression.large {
@@ -2114,12 +2144,15 @@ input[type="text"] {
 
   .transport-meta {
     justify-content: flex-start;
+    gap: 8px;
   }
 
   .rhythm-pill {
-    font-size: 0.96rem;
-    min-height: 42px;
-    padding: 10px 14px;
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.88rem;
+    min-height: 44px;
+    padding: 10px 13px;
   }
 
   .fretboard-wrapper {
@@ -2144,9 +2177,11 @@ input[type="text"] {
   }
 
   .form-chip {
-    font-size: 0.96rem;
-    min-height: 42px;
-    padding: 10px 14px;
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.88rem;
+    min-height: 44px;
+    padding: 10px 13px;
   }
 
   .form-chip-wrap {
@@ -2316,28 +2351,30 @@ input[type="text"] {
   }
 
   .key-banner {
-    font-size: 0.95rem;
-    padding: 8px 12px;
+    font-size: 1.1rem;
+    padding: 12px 18px;
+    min-height: 52px;
   }
 
   .tempo-pill {
-    padding: 8px 10px;
+    min-height: 48px;
+    padding: 9px 11px;
   }
 
   .tempo-pill .tempo-label {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
   }
 
   .tempo-pill .tempo-wrap {
-    grid-template-columns: 38px minmax(0, 1fr) 38px auto;
+    grid-template-columns: 44px minmax(0, 1fr) 44px auto;
     column-gap: 8px;
   }
 
   .tempo-step {
-    width: 38px;
-    height: 38px;
-    flex-basis: 38px;
-    font-size: 1.12rem;
+    width: 44px;
+    height: 44px;
+    flex-basis: 44px;
+    font-size: 1.22rem;
   }
 
   .progression.large {

@@ -95,7 +95,10 @@ globalThis.__btgExports = {
   getChordRhythm,
   buildMidiFile,
   getRhythmNameForSection,
-  getDrumPatternForSection
+  getDrumPatternForSection,
+  getHighlightNotes,
+  displayNoteForKey,
+  scaleOnlyToggle
 };`;
 
   const nodes = new Map();
@@ -488,4 +491,105 @@ test("whole-note rhythm repeats once per bar for long chords", () => {
   state.rhythm = "whole";
   const hits = getChordRhythm(16, "A");
   assert.equal(JSON.stringify(hits), JSON.stringify([0, 4, 8, 12]));
+});
+
+function parseRomanForReference(token) {
+  const cleaned = token.replace(/[^IViv°b#]/g, "");
+  const match = cleaned.match(/^([b#]?)([IViv]+°?)$/);
+  if (!match) return null;
+  const acc = match[1] === "b" ? -1 : match[1] === "#" ? 1 : 0;
+  let core = match[2];
+  const isDim = core.endsWith("°");
+  if (isDim) core = core.slice(0, -1);
+  const degreeMap = { I: 0, II: 1, III: 2, IV: 3, V: 4, VI: 5, VII: 6 };
+  const degree = degreeMap[core.toUpperCase()];
+  if (degree == null) return null;
+  return { degree, acc, core, isDim };
+}
+
+function qualityForReference(mode, token, degreeInfo) {
+  const defaults = {
+    major: ["maj", "min", "min", "maj", "maj", "min", "dim"],
+    minor: ["min", "dim", "maj", "min", "min", "maj", "maj"]
+  };
+  let quality = defaults[mode][degreeInfo.degree];
+  if (degreeInfo.isDim) return "dim";
+  const roman = token.replace(/[^IViv]/g, "");
+  if (/[iv]/.test(roman) && !/[IV]/.test(roman)) quality = "min";
+  if (/[IV]/.test(roman) && !/[iv]/.test(roman)) quality = "maj";
+  return quality;
+}
+
+test("100 random generated progressions resolve to musically valid roman chord tones", () => {
+  const { state, chooseMusicalProgression, createChordItem, chordFromItem, NOTES } = loadEngine();
+  const MAJOR = [0, 2, 4, 5, 7, 9, 11];
+  const MINOR = [0, 2, 3, 5, 7, 8, 10];
+  const FLAT_EQ = { Db: "C#", Eb: "D#", Gb: "F#", Ab: "G#", Bb: "A#" };
+  const toPc = (note) => {
+    const normalized = FLAT_EQ[note] || note;
+    return NOTES.indexOf(normalized);
+  };
+
+  for (let run = 0; run < 100; run += 1) {
+    resetState(state);
+    state.mode = run % 2 === 0 ? "major" : "minor";
+    state.key = ["C", "D", "E", "F", "G", "A", "B", "Eb", "Bb", "F#", "Db", "Ab"][run % 12];
+    const spice = run % 3 === 0 ? "bold" : run % 3 === 1 ? "light" : "none";
+    const length = 4 + (run % 5);
+    const tokens = chooseMusicalProgression(length, state.mode, spice);
+    assert.equal(tokens.length, length);
+    const tonic = state.mode === "major" ? "I" : "i";
+    assert.ok(tokens[0] === tonic || tokens[tokens.length - 1] === tonic);
+
+    tokens.forEach((token) => {
+      const parsed = parseRomanForReference(token);
+      assert.ok(parsed, `token should parse as roman: ${token}`);
+      const item = createChordItem(token, 4);
+      const chord = chordFromItem(item);
+      const rootPc = toPc(chord.root);
+      assert.ok(rootPc >= 0, `root should map to pitch class: ${chord.root}`);
+
+      const modeScale = state.mode === "major" ? MAJOR : MINOR;
+      let accidental = parsed.acc;
+      // Minor-mode bIII/bVI/bVII are treated as modal diatonic colors in app logic.
+      if (state.mode === "minor" && accidental === -1 && (parsed.degree === 2 || parsed.degree === 5 || parsed.degree === 6)) {
+        accidental = 0;
+      }
+      const keyPc = toPc(state.key);
+      const expectedRoot = (keyPc + modeScale[parsed.degree] + accidental + 1200) % 12;
+      assert.equal(rootPc, expectedRoot, `unexpected root for ${state.key} ${state.mode} ${token}`);
+
+      const quality = qualityForReference(state.mode, token, parsed);
+      const expectedTriad = quality === "maj" ? [0, 4, 7] : quality === "min" ? [0, 3, 7] : [0, 3, 6];
+      expectedTriad.forEach((interval) => {
+        assert.ok(chord.intervals.includes(interval), `missing interval ${interval} for ${token}`);
+      });
+    });
+  }
+});
+
+test("scale-only mode follows key mode and includes spicy chord tones", () => {
+  const { state, getHighlightNotes, chordFromItem, createChordItem, scaleOnlyToggle } = loadEngine();
+  resetState(state);
+  state.mode = "minor";
+  state.key = "F#";
+  if (scaleOnlyToggle) scaleOnlyToggle.checked = true;
+
+  // Spicy chord in F# minor: bII => G major (G-B-D), includes out-of-scale tones.
+  const spicy = chordFromItem(createChordItem("bII", 4));
+  state.currentChordNotes = new Set(spicy.intervals.map((i) => {
+    const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    const keyPc = notes.indexOf(spicy.root);
+    return notes[(keyPc + i + 1200) % 12];
+  }));
+  state.currentChordRoot = spicy.root;
+
+  const { highlightSet } = getHighlightNotes();
+  // F# natural minor contains A, not A#/Bb.
+  assert.ok(highlightSet.has("A"));
+  assert.ok(!highlightSet.has("A#"));
+  // spicy bII chord tones should be represented.
+  assert.ok(highlightSet.has("G"));
+  assert.ok(highlightSet.has("B"));
+  assert.ok(highlightSet.has("D"));
 });

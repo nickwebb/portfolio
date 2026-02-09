@@ -4699,7 +4699,13 @@ function getHighlightNotes() {
   const scaleIntervals = scaleOnly ? modeScale : (scales[scaleSelect?.value] || MAJOR_SCALE);
   const scaleSet = new Set(scaleIntervals.map((interval) => normalize(noteAt(state.key, interval))));
   if (scaleOnly) {
-    return { highlightSet: scaleSet, overlaySet: new Set(), scaleOnly: true };
+    // In scale-only view, fold in current out-of-scale chord tones so spicy chords
+    // are still represented on the map.
+    const spicyChordTones = new Set(
+      Array.from(normalizedChord).filter((note) => !scaleSet.has(note))
+    );
+    const highlightSet = new Set([...scaleSet, ...spicyChordTones]);
+    return { highlightSet, overlaySet: new Set(), scaleOnly: true };
   }
   if (state.fretMode === "scale") {
     if (!scaleSelect) return { highlightSet: normalizedChord, overlaySet: new Set(), scaleOnly: false };
