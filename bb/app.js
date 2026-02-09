@@ -2198,6 +2198,23 @@ function getDrumPatternForSection(section = "A") {
   return patterns[(activeIndex + 1) % patterns.length];
 }
 
+function getPhraseRoleForBar(barIndex = 0) {
+  const slot = ((barIndex % 4) + 4) % 4;
+  if (slot === 2) return "lift";
+  if (slot === 3) return "turnaround";
+  return "steady";
+}
+
+function getBarIndexAtTime(time, beatDuration = 0.6) {
+  const barDuration = beatDuration * 4;
+  if (!Number.isFinite(time) || barDuration <= 0) return 0;
+  return Math.max(0, Math.floor((time + 0.0001) / barDuration));
+}
+
+function uniqSortedNumeric(values = []) {
+  return Array.from(new Set(values.filter((value) => Number.isFinite(value)))).sort((a, b) => a - b);
+}
+
 function weightedPick(items, weightFn = (item) => item.weight || 1) {
   if (!items || items.length === 0) return null;
   const total = items.reduce((sum, item) => sum + Math.max(0, weightFn(item)), 0);
@@ -3382,7 +3399,7 @@ function schedulePlayback() {
     const entry = sequence[index];
     const item = entry.item;
     const chord = chordFromItem(item);
-    scheduleChord(item, chord, state.nextTime, entry.sectionIndex, item.beats, entry.section);
+    scheduleChord(item, chord, state.nextTime, entry.sectionIndex, item.beats, entry.section, index);
     const duration = (60 / state.tempo) * item.beats;
     const startBar = Math.floor(state.nextTime / barLength);
     const endBar = Math.floor((state.nextTime + duration - 0.001) / barLength);
@@ -3432,7 +3449,7 @@ function getSplitCompGroups(notes) {
   return { low: ordered.slice(0, 2), high: ordered.slice(-2) };
 }
 
-function scheduleChord(item, chord, time, index, beats, section = state.activeSection) {
+function scheduleChord(item, chord, time, index, beats, section = state.activeSection, sequenceIndex = 0) {
   state.activeDrumSection = section;
   const { root, intervals } = chord;
   const baseMidi = noteToMidi(root, 3);
@@ -3440,7 +3457,7 @@ function scheduleChord(item, chord, time, index, beats, section = state.activeSe
   const notes = getVoiceLedNotes(baseNotes, chord, baseMidi);
   const duration = (60 / state.tempo) * beats;
   const rhythmName = getRhythmNameForSection(section);
-  const rhythm = getChordRhythm(beats, section);
+  const rhythm = getChordRhythm(beats, section, time);
   const isGuitar = state.sampleInstrument.startsWith("guitar");
   const isPiano = state.sampleInstrument === "piano";
   const useRealistic = isGuitar && state.realisticGuitar;
@@ -3455,11 +3472,27 @@ function scheduleChord(item, chord, time, index, beats, section = state.activeSe
     const maxHold = Math.max(0.1, next - hitTimes[idx] - 0.01);
     return Math.min(baseDuration, maxHold);
   };
+  const getCompVelocity = (base, hitTime, beatInBar = 0) => {
+    const barIndex = getBarIndexAtTime(hitTime, beatDur);
+    const phraseRole = getPhraseRoleForBar(barIndex);
+    let factor = 1;
+    if (Math.abs(beatInBar) < 0.01) factor *= 1.06;
+    else if (Math.abs(beatInBar - 2) < 0.01) factor *= 1.02;
+    else if (Math.abs(beatInBar - 0.5) < 0.01 || Math.abs(beatInBar - 1.5) < 0.01 || Math.abs(beatInBar - 2.5) < 0.01 || Math.abs(beatInBar - 3.5) < 0.01) factor *= 0.95;
+    if (phraseRole === "lift") factor *= 1.03;
+    if (phraseRole === "turnaround") factor *= 1.06;
+    factor *= 0.95 + Math.random() * 0.1;
+    return Math.max(0.45, Math.min(1.15, base * factor));
+  };
   rhythm.forEach((beat, idx) => {
     const hitTime = time + (60 / state.tempo) * beat;
+    const beatInBar = ((beat % 4) + 4) % 4;
     if (state.texture === "arp") {
       const noteDur = isWhole ? duration : getHoldUntilNext(idx, duration * 0.6);
-      notes.forEach((midi, idx) => playNote(midi, hitTime + idx * 0.08, noteDur, 0.85));
+      notes.forEach((midi, noteIdx) => {
+        const noteTime = hitTime + noteIdx * 0.08;
+        playNote(midi, noteTime, noteDur, getCompVelocity(0.85, noteTime, beatInBar));
+      });
     } else if (state.texture === "split") {
       const noteDur = isWhole ? duration : getHoldUntilNext(idx, duration * 0.55);
       const group = idx % 2 === 0 ? splitGroups.low : splitGroups.high;
@@ -3467,14 +3500,16 @@ function scheduleChord(item, chord, time, index, beats, section = state.activeSe
       const baseVelocity = idx % 2 === 0 ? 0.82 : 0.9;
       group.forEach((midi, groupIdx) => {
         const humanize = useRealistic ? (Math.random() - 0.5) * 0.01 : 0;
+        const noteTime = hitTime + groupIdx * spread + humanize;
         const velocity = Math.max(0.55, baseVelocity - groupIdx * 0.07);
-        playNote(midi, hitTime + groupIdx * spread + humanize, noteDur, velocity);
+        playNote(midi, noteTime, noteDur, getCompVelocity(velocity, noteTime, beatInBar));
       });
       if (idx % 4 === 3 && Math.random() < 0.28) {
         const accentDur = isWhole ? duration * 0.4 : noteDur * 0.5;
         notes.forEach((midi, noteIdx) => {
           const accentSpread = isPiano ? 0 : noteIdx * 0.012;
-          playNote(midi, hitTime + 0.02 + accentSpread, accentDur, 0.62);
+          const accentTime = hitTime + 0.02 + accentSpread;
+          playNote(midi, accentTime, accentDur, getCompVelocity(0.62, accentTime, beatInBar));
         });
       }
     } else if (state.texture === "pulse") {
@@ -3485,13 +3520,17 @@ function scheduleChord(item, chord, time, index, beats, section = state.activeSe
           const humanize = (Math.random() - 0.5) * 0.01;
           const velocity = (downstroke ? 0.9 : 0.7) * (1 - idx * 0.05);
           const noteDur = isWhole ? duration : getHoldUntilNext(idx, duration * 0.4);
-          playNote(midi, hitTime + idx * (strumSpread * 0.7) + humanize, noteDur, velocity);
+          const noteTime = hitTime + idx * (strumSpread * 0.7) + humanize;
+          playNote(midi, noteTime, noteDur, getCompVelocity(velocity, noteTime, beatInBar));
         });
       } else {
         const isUpstroke = Math.random() < 0.4;
         const offset = isPiano ? 0 : (isUpstroke ? -0.02 : 0);
         const noteDur = isWhole ? duration : getHoldUntilNext(idx, duration * 0.35);
-        notes.forEach((midi) => playNote(midi, hitTime + offset, noteDur, 0.75));
+        notes.forEach((midi) => {
+          const noteTime = hitTime + offset;
+          playNote(midi, noteTime, noteDur, getCompVelocity(0.75, noteTime, beatInBar));
+        });
       }
     } else {
       if (useRealistic) {
@@ -3504,13 +3543,15 @@ function scheduleChord(item, chord, time, index, beats, section = state.activeSe
           const humanize = (Math.random() - 0.5) * 0.01;
           const velocity = (downstroke ? 0.95 : 0.8) * (1 - idx * 0.06);
           const noteDur = isWhole ? duration : getHoldUntilNext(idx, duration * 0.7);
-          playNote(midi, hitTime + orderIdx * strumSpread + humanize, noteDur, velocity);
+          const noteTime = hitTime + orderIdx * strumSpread + humanize;
+          playNote(midi, noteTime, noteDur, getCompVelocity(velocity, noteTime, beatInBar));
         });
       } else {
         const noteDur = isWhole ? duration : getHoldUntilNext(idx, duration * 0.7);
         notes.forEach((midi, noteIdx) => {
           const spread = isPiano ? 0 : noteIdx * 0.02;
-          playNote(midi, hitTime + spread, noteDur, 0.9);
+          const noteTime = hitTime + spread;
+          playNote(midi, noteTime, noteDur, getCompVelocity(0.9, noteTime, beatInBar));
         });
       }
     }
@@ -3518,7 +3559,7 @@ function scheduleChord(item, chord, time, index, beats, section = state.activeSe
 
   scheduleUiUpdate(item, chord, time, index, section);
   if (state.bassEnabled) {
-    scheduleBass(root, time, item.beats);
+    scheduleBass(root, time, item.beats, section, sequenceIndex);
   }
 }
 
@@ -3616,53 +3657,107 @@ function getVoiceLedNotes(baseNotes, chord, baseMidi) {
   return best;
 }
 
-function getChordRhythm(beats, section = "A") {
+function getChordRhythm(beats, section = "A", startTime = 0) {
   const rhythmName = getRhythmNameForSection(section);
   const pattern = RHYTHMS[rhythmName] || RHYTHMS.whole;
-  const base = [];
-  // Rhythm patterns are defined over one 4/4 bar, so repeat them for longer chords.
+  const beatDur = 60 / state.tempo;
+  const hits = [];
+  // Rhythm patterns are bar-based. Build each bar and apply tiny phrase variation.
   for (let barStart = 0; barStart < beats; barStart += 4) {
-    pattern.forEach((step) => {
-      const hit = barStart + step;
-      if (hit < beats) base.push(hit);
-    });
+    const windowBeats = Math.min(4, beats - barStart);
+    let barHits = pattern.filter((step) => step < windowBeats).map((step) => barStart + step);
+    if (rhythmName !== "whole" && windowBeats > 1) {
+      const barTime = startTime + barStart * beatDur;
+      const phraseRole = getPhraseRoleForBar(getBarIndexAtTime(barTime, beatDur));
+      if (phraseRole === "steady" && barHits.length > 2 && Math.random() < 0.16) {
+        const candidates = barHits.filter((step) => Math.abs((step % 4)) > 0.01);
+        if (candidates.length > 0) {
+          const drop = candidates[Math.floor(Math.random() * candidates.length)];
+          barHits = barHits.filter((step) => step !== drop);
+        }
+      }
+      if (phraseRole === "lift" && windowBeats >= 4 && barHits.length < 7 && Math.random() < 0.55) {
+        barHits.push(barStart + 3.5);
+      }
+      if (phraseRole === "turnaround" && windowBeats >= 4) {
+        if (Math.random() < 0.72) barHits.push(barStart + 3.5);
+        if (Math.random() < 0.32) barHits.push(barStart + 3.75);
+      }
+    }
+    hits.push(...barHits.filter((hit) => hit < beats));
   }
-  if (rhythmName === "whole") return base;
-  if (base.length <= 1) return base;
-  const varied = base.slice();
-  if (Math.random() < 0.35) {
-    const dropIndex = Math.floor(Math.random() * (varied.length - 1)) + 1;
-    varied.splice(dropIndex, 1);
-  }
-  if (Math.random() < 0.25) {
-    const target = varied[Math.floor(Math.random() * varied.length)];
-    const extra = target + 0.25;
-    if (extra < beats && !varied.includes(extra)) varied.push(extra);
-  }
-  varied.sort((a, b) => a - b);
-  return varied;
+  return uniqSortedNumeric(hits);
 }
 
-function scheduleBass(root, time, beats = 4) {
+function scheduleBass(root, time, beats = 4, section = "A", sequenceIndex = 0) {
   const beat = 60 / state.tempo;
   const baseMidi = noteToMidi(root, 2);
   const rhythm = BASS_RHYTHMS[state.bassRhythm] || BASS_RHYTHMS.steady;
+  const sequence = state.playbackSequence || [];
+  let nextRootMidi = baseMidi;
+  if (sequence.length > 1) {
+    const nextEntry = sequence[(sequenceIndex + 1) % sequence.length];
+    if (nextEntry?.item) {
+      const nextChord = chordFromItem(nextEntry.item);
+      nextRootMidi = noteToMidi(nextChord.root, 2);
+    }
+  }
+  const getApproachMidi = () => {
+    if (nextRootMidi === baseMidi) return baseMidi + 7;
+    const direction = nextRootMidi >= baseMidi ? 1 : -1;
+    return nextRootMidi - direction;
+  };
+  const clampBassMidi = (midi) => {
+    let out = midi;
+    while (out < 28) out += 12;
+    while (out > 60) out -= 12;
+    return out;
+  };
   const totalBeats = Math.max(1, beats || 4);
   let cursor = 0;
   while (cursor < totalBeats) {
     const windowBeats = Math.min(4, totalBeats - cursor);
     const windowStart = time + cursor * beat;
-    rhythm.forEach((step) => {
-      if (step >= windowBeats) return;
-      const hitTime = windowStart + step * beat;
-      const dur = state.bassRhythm === "eighths" ? beat * 0.45 : beat * 0.85;
-      playBassNote(baseMidi, hitTime, dur);
+    const phraseRole = getPhraseRoleForBar(getBarIndexAtTime(windowStart, beat));
+    let barSteps = rhythm.filter((step) => step < windowBeats);
+    if (phraseRole === "steady" && barSteps.length > 2 && Math.random() < 0.16) {
+      const candidates = barSteps.filter((step) => step > 0.01 && step < windowBeats - 0.01);
+      if (candidates.length > 0) {
+        const drop = candidates[Math.floor(Math.random() * candidates.length)];
+        barSteps = barSteps.filter((step) => step !== drop);
+      }
+    }
+    if (windowBeats >= 4 && phraseRole === "lift" && Math.random() < 0.45) {
+      barSteps.push(3.5);
+    }
+    if (windowBeats >= 4 && phraseRole === "turnaround") {
+      barSteps.push(3.5);
+    }
+    barSteps = uniqSortedNumeric(barSteps);
+    barSteps.forEach((step, hitIdx) => {
+      let noteMidi = baseMidi;
+      const isPickup = step >= 3.25 && windowBeats >= 4;
+      if (isPickup && (phraseRole === "turnaround" || (phraseRole === "lift" && Math.random() < 0.7))) {
+        noteMidi = getApproachMidi();
+      } else if (step >= 1.5 && step < 2.5 && Math.random() < 0.28) {
+        noteMidi = baseMidi + 7;
+      } else if (step >= 2.5 && Math.random() < 0.14) {
+        noteMidi = baseMidi + 12;
+      }
+      noteMidi = clampBassMidi(noteMidi);
+      const jitter = (Math.random() - 0.5) * (state.bassRhythm === "walking" ? 0.008 : 0.005);
+      const hitTime = windowStart + step * beat + jitter;
+      const durBase = state.bassRhythm === "eighths" ? 0.45 : state.bassRhythm === "walking" ? 0.65 : 0.85;
+      const dur = beat * (isPickup ? 0.34 : durBase);
+      const roleBoost = phraseRole === "turnaround" ? 1.06 : phraseRole === "lift" ? 1.03 : 1;
+      const velocity = Math.max(0.55, Math.min(1, (0.82 + Math.random() * 0.16) * roleBoost * (hitIdx === 0 ? 1.05 : 1)));
+      playBassNote(noteMidi, hitTime, dur, velocity);
     });
     cursor += windowBeats;
   }
 }
 
-function playBassNote(midi, time, duration) {
+function playBassNote(midi, time, duration, velocity = 1) {
   if (!state.audioCtx || !state.bassBusGain) return;
   const offset = (state.bassOffsetMs || 0) / 1000;
   const startTime = Math.max(time + offset, state.audioCtx.currentTime + 0.002);
@@ -3680,7 +3775,7 @@ function playBassNote(midi, time, duration) {
   filter.Q.value = 0.7;
 
   gain.gain.setValueAtTime(0, startTime);
-  gain.gain.linearRampToValueAtTime(0.7, startTime + 0.005);
+  gain.gain.linearRampToValueAtTime(0.7 * Math.max(0.45, velocity), startTime + 0.005);
   gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
 
   osc.connect(filter);
@@ -4130,40 +4225,72 @@ function scheduleDrums(barTime, beats = 4, fill = false, section = "A") {
   const kit = DRUM_KITS[kitName];
   const useSamples = state.drumSamplesLoaded && kit;
   const barStart = barTime;
+  const barIndex = getBarIndexAtTime(barStart, beat);
+  const phraseRole = getPhraseRoleForBar(barIndex);
+  const hitTimeForStep = (step, ms = 0) => barStart + step * beat + (Math.random() - 0.5) * ((ms * 2) / 1000);
   if (DEBUG_AUDIO) {
-    console.log("[GPL] scheduleDrums", { barStart, beats, fill, useSamples, style: state.drumStyle });
+    console.log("[GPL] scheduleDrums", { barStart, beats, fill, useSamples, style: state.drumStyle, phraseRole });
   }
 
-  pattern.kick.filter((step) => step < beats).forEach((step) => {
-    const hitTime = barStart + step * beat;
-    if (!(useSamples && playDrumSample(kit.kick, hitTime, 0.9))) playKick(hitTime, sound);
+  let kickSteps = pattern.kick.filter((step) => step < beats);
+  if (phraseRole === "lift" && beats >= 4 && Math.random() < 0.24) kickSteps.push(2.75);
+  if (phraseRole === "turnaround" && beats >= 4 && Math.random() < 0.18) kickSteps.push(3.25);
+  kickSteps = uniqSortedNumeric(kickSteps).filter((step) => step < beats);
+  kickSteps.forEach((step) => {
+    const hitTime = hitTimeForStep(step, step % 1 === 0 ? 2 : 5);
+    const gain = (step === 0 ? 0.92 : 0.84) * (phraseRole === "turnaround" ? 1.05 : phraseRole === "lift" ? 1.02 : 1) * (0.94 + Math.random() * 0.12);
+    if (!(useSamples && playDrumSample(kit.kick, hitTime, gain))) playKick(hitTime, sound);
   });
 
   const fillSnare = fill ? [1.5, 2, 2.5, 3, 3.5] : [];
-  const snareSteps = Array.from(new Set([1, 3, ...(pattern.snare || []), ...fillSnare])).filter((step) => step < beats);
-  snareSteps.forEach((step) => {
-    const hitTime = barStart + step * beat;
-    const snareUrl = kit?.snareB && Math.random() < 0.35 ? kit.snareB : kit?.snareA;
-    if (!(useSamples && snareUrl && playDrumSample(snareUrl, hitTime, 0.75))) playSnare(hitTime, sound);
-  });
-
-  pattern.hat.filter((step) => step < beats).forEach((step) => {
-    const hitTime = barStart + step * beat;
-    if (!(useSamples && kit?.hatClosed && playDrumSample(kit.hatClosed, hitTime, 0.35))) playHat(hitTime, sound);
-  });
-
-  if (pattern.hatOpen) {
-    pattern.hatOpen.filter((step) => step < beats).forEach((step) => {
-      const hitTime = barStart + step * beat;
-      if (useSamples && kit?.hatOpen) playDrumSample(kit.hatOpen, hitTime, 0.5);
-    });
+  let ghostSnareSteps = [];
+  if (!fill && phraseRole === "lift" && Math.random() < 0.45) ghostSnareSteps = [2.75];
+  if (!fill && phraseRole === "turnaround" && Math.random() < 0.52) {
+    const ghostPool = [0.75, 1.75, 2.75, 3.75];
+    ghostSnareSteps = [ghostPool[Math.floor(Math.random() * ghostPool.length)]];
   }
+  const snareSteps = uniqSortedNumeric([1, 3, ...(pattern.snare || []), ...fillSnare]).filter((step) => step < beats);
+  snareSteps.forEach((step) => {
+    const hitTime = hitTimeForStep(step, 3);
+    const snareUrl = kit?.snareB && Math.random() < 0.35 ? kit.snareB : kit?.snareA;
+    const gain = 0.74 * (0.94 + Math.random() * 0.14);
+    if (!(useSamples && snareUrl && playDrumSample(snareUrl, hitTime, gain))) playSnare(hitTime, sound);
+  });
+  ghostSnareSteps.filter((step) => step < beats).forEach((step) => {
+    const hitTime = hitTimeForStep(step, 6);
+    const ghostUrl = kit?.snareA || kit?.snareB;
+    if (!(useSamples && ghostUrl && playDrumSample(ghostUrl, hitTime, 0.22))) playSnare(hitTime, sound);
+  });
 
-  if (pattern.perc) {
+  let hatSteps = pattern.hat.filter((step) => step < beats);
+  if (phraseRole === "lift" && beats >= 4 && Math.random() < 0.5) hatSteps.push(3.75);
+  if (phraseRole === "turnaround" && beats >= 4 && Math.random() < 0.35) hatSteps.push(3.25);
+  hatSteps = uniqSortedNumeric(hatSteps).filter((step) => step < beats);
+  hatSteps.forEach((step) => {
+    const hitTime = hitTimeForStep(step, 8);
+    const accent = Math.abs((step % 1) - 0.5) < 0.01 ? 1.07 : 0.95;
+    const gain = 0.33 * accent * (0.9 + Math.random() * 0.22);
+    if (!(useSamples && kit?.hatClosed && playDrumSample(kit.hatClosed, hitTime, gain))) playHat(hitTime, sound);
+  });
+
+  const openHatSteps = uniqSortedNumeric([
+    ...(pattern.hatOpen || []),
+    ...((phraseRole === "turnaround" && beats >= 4 && !fill) ? [3.5] : [])
+  ]).filter((step) => step < beats);
+  openHatSteps.forEach((step) => {
+    const hitTime = hitTimeForStep(step, 7);
+    if (useSamples && kit?.hatOpen) playDrumSample(kit.hatOpen, hitTime, 0.46 * (0.92 + Math.random() * 0.14));
+  });
+
+  if (pattern.perc || phraseRole === "turnaround") {
     const percUrl = kit?.perc || kit?.cowbell || kit?.rim || kit?.tamb || kit?.tom;
-    pattern.perc.filter((step) => step < beats).forEach((step) => {
-      const hitTime = barStart + step * beat;
-      if (useSamples && percUrl) playDrumSample(percUrl, hitTime, 0.5);
+    const percSteps = uniqSortedNumeric([
+      ...(pattern.perc || []),
+      ...((phraseRole === "turnaround" && !fill) ? [3.5] : [])
+    ]).filter((step) => step < beats);
+    percSteps.forEach((step) => {
+      const hitTime = hitTimeForStep(step, 9);
+      if (useSamples && percUrl) playDrumSample(percUrl, hitTime, 0.46 * (0.9 + Math.random() * 0.2));
     });
   }
 }
