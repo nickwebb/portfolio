@@ -97,6 +97,7 @@
             </div>
             <div class="playback under">
               <button id="playBtn" class="btn primary play">Play</button>
+              <button id="restartBtn" class="btn ghost">Restart</button>
               <button id="downloadMidi" class="btn ghost">Download MIDI</button>
             </div>
             <div id="countIn" class="count-in" aria-live="polite">
@@ -168,6 +169,9 @@
                   <option value="drive">Eighth Drive</option>
                   <option value="syncopated">Syncopated</option>
                   <option value="offbeat">Offbeat Pulse</option>
+                  <option value="split">High/Low Comp</option>
+                  <option value="answer">Call + Answer</option>
+                  <option value="chop">Backbeat Chop</option>
                   <option value="push">Push Accents</option>
                   <option value="tresillo">Tresillo</option>
                   <option value="habanera">Habanera</option>
@@ -248,6 +252,7 @@
                 <option value="block">Block Chords</option>
                 <option value="arp">Arpeggiated</option>
                 <option value="pulse">Pulse Comp</option>
+                <option value="split">Split Comp (High/Low)</option>
               </select>
             </label>
             <label>
@@ -267,6 +272,9 @@
                 <option value="rockStrum">Rock Strum</option>
                 <option value="syncopated">Syncopated</option>
                 <option value="offbeat">Offbeat Pulse</option>
+                <option value="answer">Call + Answer</option>
+                <option value="split">High/Low Comping</option>
+                <option value="chop">Backbeat Chop</option>
                 <option value="push">Push Accents</option>
                 <option value="tresillo">Tresillo</option>
                 <option value="habanera">Habanera</option>
@@ -275,49 +283,19 @@
               </select>
             </label>
             <label>
-              Tone Warmth
-              <input id="toneSlider" type="range" min="400" max="2400" value="1200" />
-            </label>
-            <label>
-              Note Hold
-              <input id="holdSlider" type="range" min="0.6" max="2.5" step="0.1" value="1.4" />
-            </label>
-            <label>
-              Sample Timing
-              <input id="sampleOffset" type="range" min="-600" max="200" step="5" value="-40" />
-            </label>
-            <label>
-              Sample Trim
-              <input id="sampleTrim" type="range" min="0" max="300" step="10" value="20" />
-            </label>
-            <label>
               Instrument
               <select id="instrumentSelect">
                 <option value="piano" selected>Piano</option>
-                <option value="guitar">Rock Guitar</option>
+                <option value="guitar_clean">Guitar Clean</option>
+                <option value="guitar_crunch">Guitar Crunch</option>
+                <option value="guitar_heavy">Guitar Heavy</option>
+                <option value="synth">Synth Pad</option>
               </select>
             </label>
-            <label>
-              Guitar Level
-              <div class="level-row">
-                <input id="guitarLevel" type="range" min="0" max="100" step="5" value="5" />
-                <span id="guitarLevelValue">5%</span>
-              </div>
-            </label>
-            <label>
-              Drum Style
-              <select id="drumStyleSelect">
-                <option value="random">Random</option>
-                <option value="pop" selected>Pop/Rock</option>
-                <option value="electronic">Electronic</option>
-                <option value="edm">EDM</option>
-                <option value="industrial">Industrial</option>
-                <option value="african">African</option>
-                <option value="clave">Clave</option>
-                <option value="bossa">Bossa Nova</option>
-                <option value="jazz">Jazz</option>
-                <option value="cinematic">Cinematic</option>
-              </select>
+            <label class="toggle">
+              Realistic Guitar
+              <input id="realisticGuitarToggle" type="checkbox" checked />
+              <span>Enabled</span>
             </label>
             <label class="toggle">
               Drums
@@ -343,10 +321,82 @@
                 <option value="walking">Walking</option>
               </select>
             </label>
+          </div>
+          <div class="slider-group">
+            <label>
+              Tone Warmth
+              <input id="toneSlider" type="range" min="400" max="2400" value="1200" />
+            </label>
+            <label>
+              Note Hold
+              <input id="holdSlider" type="range" min="0.6" max="2.5" step="0.1" value="1.4" />
+            </label>
+            <label>
+              Piano Timing
+              <div class="level-row">
+                <input id="sampleOffset" type="range" min="-120" max="120" step="1" value="-7" />
+                <span id="pianoTimingValue">-7ms</span>
+              </div>
+            </label>
+            <label>
+              Sample Trim
+              <input id="sampleTrim" type="range" min="0" max="300" step="10" value="280" />
+            </label>
+            <label>
+              Piano Level
+              <div class="level-row">
+                <input id="pianoLevel" type="range" min="0" max="100" step="1" value="55" />
+                <span id="pianoLevelValue">55%</span>
+              </div>
+            </label>
+            <label>
+              Guitar Level
+              <div class="level-row">
+                <input id="guitarLevel" type="range" min="0" max="100" step="1" value="30" />
+                <span id="guitarLevelValue">30%</span>
+              </div>
+            </label>
+            <label>
+              Drum Level
+              <input id="drumLevel" type="range" min="0" max="100" step="1" value="55" />
+            </label>
             <label>
               Bass Level
-              <input id="bassLevel" type="range" min="0" max="100" step="5" value="35" />
+              <input id="bassLevel" type="range" min="0" max="100" step="1" value="35" />
             </label>
+            <label>
+              Bass Timing
+              <div class="level-row">
+                <input id="bassTiming" type="range" min="-120" max="120" step="1" value="-6" />
+                <span id="bassTimingValue">-6ms</span>
+              </div>
+            </label>
+            <button id="resetSliders" class="btn ghost small">Reset sliders</button>
+            <div class="latency-test">
+              <button id="runLatencyTest" class="btn ghost small">Run latency test</button>
+              <div id="latencyResult" class="note">Latency test: —</div>
+            </div>
+          </div>
+          <div class="control-row">
+            <label>
+              Drum Style
+              <select id="drumStyleSelect">
+                <option value="random">Random</option>
+                <option value="pop" selected>Pop/Rock</option>
+                <option value="electronic">Electronic</option>
+                <option value="edm">EDM</option>
+                <option value="industrial">Industrial</option>
+                <option value="african">African</option>
+                <option value="clave">Clave</option>
+                <option value="bossa">Bossa Nova</option>
+                <option value="jazz">Jazz</option>
+                <option value="cinematic">Cinematic</option>
+              </select>
+            </label>
+          </div>
+          <div class="auto-align">
+            <button id="autoAlignSamples" class="btn ghost small">Auto-align samples</button>
+            <div class="note">Analyzes the current instrument sample and sets trim/offset.</div>
           </div>
 
           <div class="note">Sampled backing + optional drums to keep the focus on phrasing.</div>
@@ -358,6 +408,7 @@
 
   <footer class="footer">
     <div class="footer-meta">Total practice minutes: <span id="footerMinutes">0</span></div>
+    <div class="footer-credits">Audio samples: Creative Commons Attribution (CC BY).</div>
     <button id="resetMinutes" class="btn ghost small">Reset practice minutes</button>
   </footer>
 
