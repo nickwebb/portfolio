@@ -26,7 +26,9 @@ const tempoUpMobile = document.getElementById("tempoUpMobile");
 const mobilePlay = document.getElementById("mobilePlay");
 const mobileKey = document.getElementById("mobileKey");
 const diatonicChords = document.getElementById("diatonicChords");
-const progressionEl = document.getElementById("progression");
+const progressionAEl = document.getElementById("progressionA");
+const progressionBEl = document.getElementById("progressionB");
+const progressionSectionBEl = document.getElementById("progressionSectionB");
 const progInput = document.getElementById("progInput");
 const applyProg = document.getElementById("applyProg");
 const clearProg = document.getElementById("clearProg");
@@ -61,6 +63,7 @@ const runLatencyTestBtn = document.getElementById("runLatencyTest");
 const latencyResult = document.getElementById("latencyResult");
 
 const SAMPLE_ALIGN_KEY = "gpl_sample_align";
+const UI_PREFS_KEY = "btg_ui_prefs";
 const bassRhythmSelect = document.getElementById("bassRhythmSelect");
 const progressionSelect = document.getElementById("progressionSelect");
 const genLength = document.getElementById("genLength");
@@ -114,6 +117,7 @@ const resetMinutes = document.getElementById("resetMinutes");
 const currentKey = document.getElementById("currentKey");
 const keyBanner = document.querySelector(".key-banner");
 const keyPill = document.getElementById("keyPill");
+const formChip = document.getElementById("formChip");
 const keyPicker = document.getElementById("keyPicker");
 const keyPickerNotes = document.getElementById("keyPickerNotes");
 const downloadMidiBtn = document.getElementById("downloadMidi");
@@ -127,11 +131,24 @@ const presetBlues = document.getElementById("presetBlues");
 const presetFamous = document.getElementById("presetFamous");
 const presetIIVI = document.getElementById("presetIIVI");
 const presetMinorLoop = document.getElementById("presetMinorLoop");
+const editSectionABtn = document.getElementById("editSectionA");
+const addBSectionBtn = document.getElementById("addBSection");
+const editSectionBBtn = document.getElementById("editSectionB");
+const aRepeatsSelect = document.getElementById("aRepeats");
+const bRepeatsSelect = document.getElementById("bRepeats");
 
 const scrollButtons = document.querySelectorAll("[data-scroll]");
 
 const state = {
   progression: [],
+  sectionA: [],
+  sectionB: [],
+  hasBSection: false,
+  activeSection: "A",
+  playingSection: "A",
+  aRepeats: 8,
+  bRepeats: 8,
+  playbackSequence: [],
   tempo: 100,
   key: "C",
   mode: "major",
@@ -262,17 +279,17 @@ const EXTENSION_OPTIONS = ["maj7", "7", "9", "11", "13", "sus4", "add9"];
 
 const SAMPLE_LIBRARY = {
   piano: [
-    { midi: 48, url: "gpl/samples/Piano.pp.C3.wav" },
-    { midi: 60, url: "gpl/samples/Piano.pp.C4.wav" },
-    { midi: 72, url: "gpl/samples/Piano.pp.C5.wav" }
+    { midi: 48, url: "backing-track-generator/samples/Piano.pp.C3.wav" },
+    { midi: 60, url: "backing-track-generator/samples/Piano.pp.C4.wav" },
+    { midi: 72, url: "backing-track-generator/samples/Piano.pp.C5.wav" }
   ],
   guitar: [
-    { midi: 48, url: "gpl/samples/guitar/Guitar.C3.wav" },
-    { midi: 60, url: "gpl/samples/guitar/Guitar.C4.wav" },
-    { midi: 72, url: "gpl/samples/guitar/Guitar.C5.wav" }
+    { midi: 48, url: "backing-track-generator/samples/guitar/Guitar.C3.wav" },
+    { midi: 60, url: "backing-track-generator/samples/guitar/Guitar.C4.wav" },
+    { midi: 72, url: "backing-track-generator/samples/guitar/Guitar.C5.wav" }
   ],
   synth: [
-    { midi: 60, url: "gpl/samples/synth/pad.wav" }
+    { midi: 60, url: "backing-track-generator/samples/synth/pad.wav" }
   ]
 };
 
@@ -369,37 +386,37 @@ const DRUM_PATTERN_BANK = {
 
 const DRUM_KITS = {
   pearl: {
-    kick: "gpl/samples/drums/pearl/kick-01.wav",
-    snareA: "gpl/samples/drums/pearl/snare-01.wav",
-    snareB: "gpl/samples/drums/pearl/snare-02.wav",
-    hatClosed: "gpl/samples/drums/pearl/hihat-closed.wav",
-    hatOpen: "gpl/samples/drums/pearl/hihat-open.wav"
+    kick: "backing-track-generator/samples/drums/pearl/kick-01.wav",
+    snareA: "backing-track-generator/samples/drums/pearl/snare-01.wav",
+    snareB: "backing-track-generator/samples/drums/pearl/snare-02.wav",
+    hatClosed: "backing-track-generator/samples/drums/pearl/hihat-closed.wav",
+    hatOpen: "backing-track-generator/samples/drums/pearl/hihat-open.wav"
   },
   cr78: {
-    kick: "gpl/samples/drums/cr78/kick.wav",
-    snareA: "gpl/samples/drums/cr78/snare.wav",
-    hatClosed: "gpl/samples/drums/cr78/hihat.wav",
-    hatOpen: "gpl/samples/drums/cr78/hihat-metal.wav",
-    perc: "gpl/samples/drums/cr78/conga-l.wav",
-    cowbell: "gpl/samples/drums/cr78/cowbell.wav",
-    rim: "gpl/samples/drums/cr78/rim.wav",
-    tamb: "gpl/samples/drums/cr78/tamb-short.wav"
+    kick: "backing-track-generator/samples/drums/cr78/kick.wav",
+    snareA: "backing-track-generator/samples/drums/cr78/snare.wav",
+    hatClosed: "backing-track-generator/samples/drums/cr78/hihat.wav",
+    hatOpen: "backing-track-generator/samples/drums/cr78/hihat-metal.wav",
+    perc: "backing-track-generator/samples/drums/cr78/conga-l.wav",
+    cowbell: "backing-track-generator/samples/drums/cr78/cowbell.wav",
+    rim: "backing-track-generator/samples/drums/cr78/rim.wav",
+    tamb: "backing-track-generator/samples/drums/cr78/tamb-short.wav"
   },
   tr505: {
-    kick: "gpl/samples/drums/tr505/kick.wav",
-    snareA: "gpl/samples/drums/tr505/snare.wav",
-    hatClosed: "gpl/samples/drums/tr505/hat.wav",
-    hatOpen: "gpl/samples/drums/tr505/hat.wav",
-    rim: "gpl/samples/drums/tr505/rim.wav",
-    tom: "gpl/samples/drums/tr505/tom.wav"
+    kick: "backing-track-generator/samples/drums/tr505/kick.wav",
+    snareA: "backing-track-generator/samples/drums/tr505/snare.wav",
+    hatClosed: "backing-track-generator/samples/drums/tr505/hat.wav",
+    hatOpen: "backing-track-generator/samples/drums/tr505/hat.wav",
+    rim: "backing-track-generator/samples/drums/tr505/rim.wav",
+    tom: "backing-track-generator/samples/drums/tr505/tom.wav"
   },
   tr909: {
-    kick: "gpl/samples/drums/tr909/kick.wav",
-    snareA: "gpl/samples/drums/tr909/snare.wav",
-    hatClosed: "gpl/samples/drums/tr909/hat.wav",
-    hatOpen: "gpl/samples/drums/tr909/hat.wav",
-    rim: "gpl/samples/drums/tr909/rim.wav",
-    tom: "gpl/samples/drums/tr909/tom.wav"
+    kick: "backing-track-generator/samples/drums/tr909/kick.wav",
+    snareA: "backing-track-generator/samples/drums/tr909/snare.wav",
+    hatClosed: "backing-track-generator/samples/drums/tr909/hat.wav",
+    hatOpen: "backing-track-generator/samples/drums/tr909/hat.wav",
+    rim: "backing-track-generator/samples/drums/tr909/rim.wav",
+    tom: "backing-track-generator/samples/drums/tr909/tom.wav"
   }
 };
 
@@ -463,17 +480,24 @@ function init() {
   setStyle(state.style);
   updateSpicySuggestion();
   updateKeyBanner();
+  try {
+    const prefs = JSON.parse(localStorage.getItem(UI_PREFS_KEY) || "{}");
+    if (typeof prefs.showFretboard === "boolean" && fretToggle) {
+      fretToggle.checked = prefs.showFretboard;
+    }
+  } catch (error) {
+    // ignore malformed UI prefs
+  }
   fretboardGrid.classList.toggle("hidden", !fretToggle.checked);
   initProgressionLibrary();
   buildFretMarkers();
   updateChordEditor();
   updatePlayButton();
   applySavedSampleAlignment();
-  if (window.innerWidth <= 900 && fretToggle) {
-    fretToggle.checked = false;
-    fretboardGrid.classList.add("hidden");
+  if (window.innerWidth <= 900 && chordEditor) {
+    state.editorPinned = false;
+    chordEditor.classList.add("hidden");
   }
-
   keySelect.addEventListener("change", () => {
     state.key = keySelect.value;
     buildChordPalette();
@@ -532,6 +556,38 @@ function init() {
     mobilePlay.addEventListener("click", togglePlayback);
   }
 
+  if (editSectionABtn) {
+    editSectionABtn.addEventListener("click", () => {
+      switchActiveSection("A");
+    });
+  }
+  if (editSectionBBtn) {
+    editSectionBBtn.addEventListener("click", () => {
+      switchActiveSection("B");
+    });
+  }
+  if (addBSectionBtn) {
+    addBSectionBtn.addEventListener("click", () => {
+      syncActiveSectionFromProgression();
+      generateBSectionFromCorpus();
+      switchActiveSection("B");
+    });
+  }
+  if (aRepeatsSelect) {
+    aRepeatsSelect.addEventListener("change", () => {
+      state.aRepeats = Math.max(1, parseInt(aRepeatsSelect.value, 10) || 8);
+      if (!state.isPlaying) state.playbackSequence = buildPlaybackSequence();
+      updateSectionControls();
+    });
+  }
+  if (bRepeatsSelect) {
+    bRepeatsSelect.addEventListener("change", () => {
+      state.bRepeats = Math.max(1, parseInt(bRepeatsSelect.value, 10) || 8);
+      if (!state.isPlaying) state.playbackSequence = buildPlaybackSequence();
+      updateSectionControls();
+    });
+  }
+
   clearProg.addEventListener("click", () => {
     state.progression = [];
     renderProgression();
@@ -576,29 +632,25 @@ function init() {
   if (restartBtn) {
     restartBtn.addEventListener("click", async () => {
       if (!state.audioCtx) initAudio();
+      const wasPlaying = state.isPlaying;
       state.isLoading = true;
       updatePlayButton();
       await ensureSamplesReady();
       state.isLoading = false;
       updatePlayButton();
-      state.currentChord = 0;
-      state.uiChord = 0;
-      state.nextTime = state.audioCtx ? state.audioCtx.currentTime + 0.05 : 0;
-      state.nextDrumTime = state.nextTime;
-      state.drumBarCount = 0;
-      state.lastCountBar = null;
-      state.lastVoicing = null;
+      resetTransportTimeline();
       updateChordEditor();
       renderProgression();
-      if (!state.isPlaying) {
-        togglePlayback();
+      if (!wasPlaying) {
+        await startPlayback();
         return;
       }
-      if (state.isPaused) {
-        resumePlayback();
-      } else {
-        beginCountIn();
+      if (state.pauseStartTime) {
+        state.pausedTotalMs += Date.now() - state.pauseStartTime;
+        state.pauseStartTime = null;
       }
+      state.isPaused = false;
+      beginCountIn();
     });
   }
   if (downloadMidiBtn) downloadMidiBtn.addEventListener("click", downloadMidi);
@@ -876,7 +928,11 @@ function init() {
       const choice = window.prompt(`Load which progression?\n${names.join(", ")}`);
       if (!choice || !saved[choice]) return;
       const data = saved[choice];
-      state.progression = normalizeProgression(data.progression);
+      state.sectionA = normalizeProgression(data.progression);
+      state.sectionB = [];
+      state.hasBSection = false;
+      state.activeSection = "A";
+      state.progression = state.sectionA;
       state.key = data.key || state.key;
       state.mode = data.mode || state.mode;
       state.tempo = data.tempo || state.tempo;
@@ -885,6 +941,7 @@ function init() {
         tempoSlider.value = state.tempo;
         updateTempo();
       }
+      updateSectionControls();
       renderProgression();
       updateChordEditor();
     });
@@ -1010,6 +1067,11 @@ function init() {
   if (positionSelect) positionSelect.addEventListener("change", buildFretboard);
   fretToggle.addEventListener("change", () => {
     fretboardGrid.classList.toggle("hidden", !fretToggle.checked);
+    try {
+      localStorage.setItem(UI_PREFS_KEY, JSON.stringify({ showFretboard: fretToggle.checked }));
+    } catch (error) {
+      // best effort only
+    }
   });
 
   if (focusChord) {
@@ -1042,28 +1104,25 @@ function init() {
     });
   }
 
-  progressionEl.addEventListener("dragover", (event) => event.preventDefault());
-  progressionEl.addEventListener("drop", (event) => {
-    const data = event.dataTransfer.getData("application/json");
-    if (!data) return;
-    const targetItem = event.target.closest(".progression-item");
-    if (targetItem) return;
-    event.preventDefault();
-    const item = normalizeProgression([JSON.parse(data)])[0];
-    state.progression.push(item);
-    state.selectedChord = state.progression.length - 1;
-    updateChordEditor();
-    renderProgression();
-  });
-  progressionEl.addEventListener("drop", (event) => {
-    const data = event.dataTransfer.getData("application/json");
-    if (!data) return;
-    const item = normalizeProgression([JSON.parse(data)])[0];
-    state.progression.push(item);
-    state.selectedChord = state.progression.length - 1;
-    updateChordEditor();
-    renderProgression();
-  });
+  const attachProgressionDrop = (element, section) => {
+    if (!element) return;
+    element.addEventListener("dragover", (event) => event.preventDefault());
+    element.addEventListener("drop", (event) => {
+      const data = event.dataTransfer.getData("application/json");
+      if (!data) return;
+      const targetItem = event.target.closest(".progression-item");
+      if (targetItem) return;
+      event.preventDefault();
+      const item = normalizeProgression([JSON.parse(data)])[0];
+      switchActiveSection(section);
+      state.progression.push(item);
+      state.selectedChord = state.progression.length - 1;
+      updateChordEditor();
+      renderProgression();
+    });
+  };
+  attachProgressionDrop(progressionAEl, "A");
+  attachProgressionDrop(progressionBEl, "B");
 
   // chord slots are added by dragging chords into the progression
 
@@ -1089,6 +1148,12 @@ function init() {
     randomizeInitialSetup();
     generateProgression();
   }
+
+  if (!state.sectionA.length) {
+    state.sectionA = normalizeProgression(state.progression);
+  }
+  state.progression = state.activeSection === "B" ? getSectionProgression("B") : getSectionProgression("A");
+  updateSectionControls();
 
   if (instrumentSelect) instrumentSelect.value = state.sampleInstrument;
   if (pianoLevelSlider) pianoLevelSlider.value = Math.round(state.pianoLevel * 100);
@@ -1156,7 +1221,10 @@ function randomizeInitialSetup() {
   if (instrumentSelect) instrumentSelect.value = "piano";
   state.sampleInstrument = "piano";
   if (genLength) genLength.value = "4";
-  if (genRhythm) genRhythm.value = "steady";
+  if (genRhythm) {
+    const starters = ["steady", "split", "answer", "chop"];
+    genRhythm.value = starters[Math.floor(Math.random() * starters.length)];
+  }
   if (bassRhythmSelect) {
     const options = Array.from(bassRhythmSelect.options).map((opt) => opt.value);
     bassRhythmSelect.value = options[Math.floor(Math.random() * options.length)];
@@ -1233,7 +1301,10 @@ function updateChordEditor() {
     if (chordEditor) chordEditor.classList.add("hidden");
     return;
   }
-  if (chordEditor && !state.editorPinned) chordEditor.classList.add("hidden");
+  if (chordEditor) {
+    if (state.editorPinned) chordEditor.classList.remove("hidden");
+    else chordEditor.classList.add("hidden");
+  }
   const item = state.progression[state.selectedChord] || state.progression[0];
   const description = describeItem(item);
   selectedChordLabel.textContent = `${description.name} • ${description.label}`;
@@ -1426,11 +1497,100 @@ function initProgressionLibrary() {
   progressionSelect.addEventListener("change", () => {
     const selected = PROGRESSION_LIBRARY[parseInt(progressionSelect.value, 10)];
     if (!selected) return;
-    state.progression = selected.tokens.map((token) => createChordItem(token));
+    state.sectionA = selected.tokens.map((token) => createChordItem(token));
+    state.sectionB = [];
+    state.hasBSection = false;
+    state.activeSection = "A";
+    state.progression = state.sectionA;
     state.selectedChord = 0;
+    updateSectionControls();
     updateChordEditor();
     renderProgression();
   });
+}
+
+function syncActiveSectionFromProgression() {
+  const normalized = normalizeProgression(state.progression);
+  if (state.activeSection === "B") {
+    state.sectionB = normalized;
+  } else {
+    state.sectionA = normalized;
+  }
+  state.progression = normalized;
+}
+
+function getSectionProgression(section) {
+  if (section === "B") return normalizeProgression(state.sectionB);
+  return normalizeProgression(state.sectionA.length ? state.sectionA : state.progression);
+}
+
+function switchActiveSection(section) {
+  syncActiveSectionFromProgression();
+  if (section === "B" && !state.hasBSection) return;
+  state.activeSection = section === "B" ? "B" : "A";
+  state.progression = state.activeSection === "B" ? getSectionProgression("B") : getSectionProgression("A");
+  state.selectedChord = 0;
+  updateChordEditor();
+  renderProgression();
+  updateSectionControls();
+}
+
+function updateSectionControls() {
+  if (editSectionABtn) editSectionABtn.classList.toggle("active", state.activeSection === "A");
+  if (editSectionBBtn) editSectionBBtn.classList.toggle("active", state.activeSection === "B");
+  if (editSectionBBtn) editSectionBBtn.disabled = !state.hasBSection;
+  if (bRepeatsSelect) bRepeatsSelect.disabled = !state.hasBSection;
+  if (progressionSectionBEl) progressionSectionBEl.classList.toggle("hidden", !state.hasBSection);
+  if (addBSectionBtn) addBSectionBtn.textContent = state.hasBSection ? "Regenerate B Section" : "Add B Section";
+  if (aRepeatsSelect) aRepeatsSelect.value = String(state.aRepeats || 8);
+  if (bRepeatsSelect) bRepeatsSelect.value = String(state.bRepeats || 8);
+  if (formChip) {
+    const formText = state.hasBSection
+      ? `Form: A x ${state.aRepeats || 8} • B x ${state.bRepeats || 8}`
+      : `Form: A x ${state.aRepeats || 8}`;
+    formChip.textContent = formText;
+  }
+}
+
+function generateBSectionFromCorpus() {
+  const a = getSectionProgression("A");
+  const targetLen = Math.max(4, a.length || 4);
+  const spice = genSpice?.value || "light";
+  const beatsPattern = a.length ? a.map((item) => item.beats || 4) : [4, 4, 4, 4];
+  let candidate = chooseMusicalProgression(targetLen, state.mode, spice);
+  const aTokens = a.map((item) => item.token).join("|");
+  for (let tries = 0; tries < 5; tries += 1) {
+    if (candidate.join("|") !== aTokens) break;
+    candidate = chooseMusicalProgression(targetLen, state.mode, spice);
+  }
+  state.sectionB = candidate.map((token, idx) => {
+    const beats = beatsPattern[idx % beatsPattern.length] || 4;
+    const exts = getExtensionForToken(token, state.mode, spice);
+    return createChordItem(token, beats, null, exts);
+  });
+  state.hasBSection = state.sectionB.length > 0;
+}
+
+function buildPlaybackSequence() {
+  syncActiveSectionFromProgression();
+  const a = getSectionProgression("A");
+  const b = state.hasBSection ? getSectionProgression("B") : [];
+  const sequence = [];
+  const aLoops = Math.max(1, state.aRepeats || 8);
+  const bLoops = Math.max(1, state.bRepeats || 8);
+  for (let loop = 0; loop < aLoops; loop += 1) {
+    a.forEach((item, idx) => sequence.push({ item, section: "A", sectionIndex: idx }));
+  }
+  if (state.hasBSection && b.length > 0) {
+    for (let loop = 0; loop < bLoops; loop += 1) {
+      b.forEach((item, idx) => sequence.push({ item, section: "B", sectionIndex: idx }));
+    }
+  }
+  if (sequence.length === 0) {
+    const fallback = normalizeProgression(state.progression);
+    fallback.forEach((item, idx) => sequence.push({ item, section: state.activeSection, sectionIndex: idx }));
+  }
+  return sequence;
 }
 
 function weightedPick(items, weightFn = (item) => item.weight || 1) {
@@ -1619,8 +1779,13 @@ function generateProgression() {
     return createChordItem(token, beats, null, exts);
   });
 
-  state.progression = items;
+  state.sectionA = normalizeProgression(items);
+  state.sectionB = [];
+  state.hasBSection = false;
+  state.activeSection = "A";
+  state.progression = state.sectionA;
   state.selectedChord = 0;
+  updateSectionControls();
   updateChordEditor();
   renderProgression();
 }
@@ -1713,45 +1878,60 @@ function formatChordName(root, quality, size) {
 }
 
 function renderProgression() {
-  progressionEl.innerHTML = "";
-  state.progression = normalizeProgression(state.progression);
-  state.progression.forEach((item, idx) => {
-    const itemEl = document.createElement("div");
-    const description = describeItem(item);
-    itemEl.className = "progression-item";
-    if (state.isPlaying && idx === state.uiChord) itemEl.classList.add("playing");
-    if (idx === state.selectedChord) itemEl.classList.add("selected");
-    itemEl.draggable = true;
-    itemEl.dataset.index = idx;
-    const beatLabel = item.beats !== 1 ? `<div class="beats">${formatBeatLabel(item.beats)}</div>` : "";
-    itemEl.innerHTML = `<span>${description.label}</span><strong>${description.name}</strong>${beatLabel}<button class="remove-chord" aria-label="Remove">×</button>`;
-    itemEl.title = "Click to select";
-    itemEl.addEventListener("click", (event) => {
-      if (event.target.classList.contains("remove-chord")) return;
-      state.selectedChord = idx;
-      state.editorPinned = true;
-      updateChordEditor();
-      renderProgression();
+  syncActiveSectionFromProgression();
+  const sectionA = getSectionProgression("A");
+  const sectionB = getSectionProgression("B");
+  const renderSection = (container, section, items) => {
+    if (!container) return;
+    container.innerHTML = "";
+    items.forEach((item, idx) => {
+      const itemEl = document.createElement("div");
+      const description = describeItem(item);
+      itemEl.className = "progression-item";
+      if (state.isPlaying && state.playingSection === section && idx === state.uiChord) itemEl.classList.add("playing");
+      if (state.activeSection === section && idx === state.selectedChord) itemEl.classList.add("selected");
+      itemEl.draggable = true;
+      itemEl.dataset.index = idx;
+      itemEl.dataset.section = section;
+      const beatLabel = item.beats !== 1 ? `<div class="beats">${formatBeatLabel(item.beats)}</div>` : "";
+      itemEl.innerHTML = `<span>${description.label}</span><strong>${description.name}</strong>${beatLabel}<button class="remove-chord" aria-label="Remove">×</button>`;
+      itemEl.title = "Click to select";
+      itemEl.addEventListener("click", (event) => {
+        if (event.target.classList.contains("remove-chord")) return;
+        switchActiveSection(section);
+        state.selectedChord = idx;
+        state.editorPinned = true;
+        if (chordEditor) chordEditor.classList.remove("hidden");
+        updateChordEditor();
+        renderProgression();
+      });
+      itemEl.querySelector(".remove-chord").addEventListener("click", (event) => {
+        event.stopPropagation();
+        switchActiveSection(section);
+        state.progression.splice(idx, 1);
+        if (state.selectedChord >= state.progression.length) {
+          state.selectedChord = Math.max(0, state.progression.length - 1);
+        }
+        updateChordEditor();
+        renderProgression();
+      });
+      itemEl.addEventListener("dragstart", handleDragStart);
+      itemEl.addEventListener("dragover", handleDragOver);
+      itemEl.addEventListener("drop", handleDrop);
+      container.appendChild(itemEl);
     });
-    itemEl.querySelector(".remove-chord").addEventListener("click", (event) => {
-      event.stopPropagation();
-      state.progression.splice(idx, 1);
-      if (state.selectedChord >= state.progression.length) {
-        state.selectedChord = Math.max(0, state.progression.length - 1);
-      }
-      updateChordEditor();
-      renderProgression();
-    });
-    itemEl.addEventListener("dragstart", handleDragStart);
-    itemEl.addEventListener("dragover", handleDragOver);
-    itemEl.addEventListener("drop", handleDrop);
-    progressionEl.appendChild(itemEl);
-  });
+  };
+
+  renderSection(progressionAEl, "A", sectionA);
+  renderSection(progressionBEl, "B", sectionB);
+  if (state.activeSection === "A") state.progression = sectionA;
+  else state.progression = sectionB;
+  updateSectionControls();
   syncProgressionInput();
 }
 
 document.addEventListener("click", (event) => {
-  if (!chordEditor || !progressionEl) return;
+  if (!chordEditor) return;
   const clickedChord = event.target.closest(".progression-item");
   const clickedEditor = event.target.closest(".chord-editor");
   if (clickedChord || clickedEditor) return;
@@ -1816,10 +1996,13 @@ function parseTokenBeat(token) {
   return { core, beats };
 }
 
-let dragIndex = null;
+let dragData = null;
 
 function handleDragStart(event) {
-  dragIndex = parseInt(event.currentTarget.dataset.index, 10);
+  dragData = {
+    index: parseInt(event.currentTarget.dataset.index, 10),
+    section: event.currentTarget.dataset.section || state.activeSection
+  };
   event.dataTransfer.effectAllowed = "move";
 }
 
@@ -1830,22 +2013,24 @@ function handleDragOver(event) {
 
 function handleDrop(event) {
   event.preventDefault();
+  const dropIndex = parseInt(event.currentTarget.dataset.index, 10);
+  const dropSection = event.currentTarget.dataset.section || state.activeSection;
   const data = event.dataTransfer.getData("application/json");
   if (data) {
-    const item = JSON.parse(data);
-    const dropIndex = parseInt(event.currentTarget.dataset.index, 10);
-    if (!Number.isNaN(dropIndex)) {
-      state.progression[dropIndex] = normalizeProgression([item])[0];
-      state.selectedChord = dropIndex;
-      updateChordEditor();
-      renderProgression();
-    }
+    const item = normalizeProgression([JSON.parse(data)])[0];
+    if (Number.isNaN(dropIndex)) return;
+    switchActiveSection(dropSection);
+    state.progression[dropIndex] = item;
+    state.selectedChord = dropIndex;
+    updateChordEditor();
+    renderProgression();
     return;
   }
-  const dropIndex = parseInt(event.currentTarget.dataset.index, 10);
-  if (Number.isNaN(dragIndex) || Number.isNaN(dropIndex) || dragIndex === dropIndex) return;
+  if (!dragData || Number.isNaN(dragData.index) || Number.isNaN(dropIndex) || dragData.index === dropIndex) return;
+  if (dragData.section !== dropSection) return;
+  switchActiveSection(dropSection);
   const updated = state.progression.slice();
-  const [moved] = updated.splice(dragIndex, 1);
+  const [moved] = updated.splice(dragData.index, 1);
   updated.splice(dropIndex, 0, moved);
   state.progression = updated;
   state.selectedChord = dropIndex;
@@ -2251,7 +2436,9 @@ function loadLatencyCompensation() {
 }
 
 async function startPlayback() {
-  if (state.isPlaying || state.progression.length === 0) return;
+  syncActiveSectionFromProgression();
+  state.playbackSequence = buildPlaybackSequence();
+  if (state.isPlaying || state.playbackSequence.length === 0) return;
   if (!state.audioCtx) initAudio();
   state.isLoading = true;
   updatePlayButton();
@@ -2263,6 +2450,7 @@ async function startPlayback() {
   state.isPaused = false;
   state.currentChord = 0;
   state.uiChord = 0;
+  state.playingSection = state.activeSection;
   state.selectedChord = 0;
   state.drumBarCount = 0;
   state.nextDrumTime = 0;
@@ -2348,14 +2536,34 @@ function beginCountIn() {
     state.drumBarCount = 0;
     state.nextDrumTime = state.nextTime;
     state.lastCountBar = null;
-    const firstItem = state.progression[0];
-    if (firstItem) updateNowPlaying(firstItem, chordFromItem(firstItem), 0);
+    const firstEntry = state.playbackSequence[0];
+    if (firstEntry?.item) updateNowPlaying(firstEntry.item, chordFromItem(firstEntry.item), 0, firstEntry.section, firstEntry.sectionIndex);
     state.timerId = setInterval(schedulePlayback, 25);
     updatePlayButton();
   }, (startTime - state.audioCtx.currentTime + beats * beat) * 1000);
 
   state.countInTimeouts.push(afterCountIn);
   updatePlayButton();
+}
+
+function resetTransportTimeline() {
+  if (state.timerId) {
+    clearInterval(state.timerId);
+    state.timerId = null;
+  }
+  clearCountIn();
+  state.isCountingIn = false;
+  state.uiTimeouts.forEach((id) => clearTimeout(id));
+  state.uiTimeouts = [];
+  state.currentChord = 0;
+  state.uiChord = 0;
+  state.playbackSequence = buildPlaybackSequence();
+  state.playingSection = state.playbackSequence[0]?.section || "A";
+  state.nextTime = state.audioCtx ? state.audioCtx.currentTime + 0.05 : 0;
+  state.nextDrumTime = state.nextTime;
+  state.drumBarCount = 0;
+  state.lastCountBar = null;
+  state.lastVoicing = null;
 }
 
 function scheduleCountInDrums(startTime) {
@@ -2420,16 +2628,20 @@ function updatePlayButton() {
 
 function schedulePlayback() {
   if (!state.isPlaying || !state.audioCtx) return;
+  const sequence = state.playbackSequence && state.playbackSequence.length ? state.playbackSequence : buildPlaybackSequence();
+  state.playbackSequence = sequence;
+  if (!sequence.length) return;
   const earliestOffset = Math.min(0, (state.sampleOffsetMs || 0) / 1000, (state.bassOffsetMs || 0) / 1000);
   const offsetPad = Math.max(0, -earliestOffset);
   const lookAhead = Math.max(0.15, offsetPad + 0.05);
   const beat = 60 / state.tempo;
   const barLength = beat * 4;
   while (state.nextTime < state.audioCtx.currentTime + lookAhead) {
-    const index = state.currentChord;
-    const item = state.progression[index];
+    const index = state.currentChord % sequence.length;
+    const entry = sequence[index];
+    const item = entry.item;
     const chord = chordFromItem(item);
-    scheduleChord(item, chord, state.nextTime, index, item.beats);
+    scheduleChord(item, chord, state.nextTime, entry.sectionIndex, item.beats, entry.section);
     const duration = (60 / state.tempo) * item.beats;
     if (state.drumsEnabled) {
       while (state.nextDrumTime < state.audioCtx.currentTime + lookAhead) {
@@ -2448,7 +2660,7 @@ function schedulePlayback() {
       state.lastCountBar = barIndex;
     }
     state.nextTime += duration;
-    state.currentChord = (state.currentChord + 1) % state.progression.length;
+    state.currentChord = (state.currentChord + 1) % sequence.length;
   }
 }
 
@@ -2475,7 +2687,7 @@ function getSplitCompGroups(notes) {
   return { low: ordered.slice(0, 2), high: ordered.slice(-2) };
 }
 
-function scheduleChord(item, chord, time, index, beats) {
+function scheduleChord(item, chord, time, index, beats, section = state.activeSection) {
   const { root, intervals } = chord;
   const baseMidi = noteToMidi(root, 3);
   const baseNotes = intervals.map((interval) => baseMidi + interval);
@@ -2557,7 +2769,7 @@ function scheduleChord(item, chord, time, index, beats) {
     }
   });
 
-  scheduleUiUpdate(item, chord, time, index);
+  scheduleUiUpdate(item, chord, time, index, section);
   if (state.bassEnabled) {
     scheduleBass(root, time, item.beats);
   }
@@ -3250,10 +3462,10 @@ function playHat(time, sound) {
   noise.stop(time + (sound?.hatDecay || 0.08) + 0.02);
 }
 
-function scheduleUiUpdate(item, chord, time, index) {
+function scheduleUiUpdate(item, chord, time, index, section = state.activeSection) {
   const delay = Math.max(0, (time - state.audioCtx.currentTime) * 1000);
   const timeout = setTimeout(() => {
-    updateNowPlaying(item, chord, index);
+    updateNowPlaying(item, chord, index, section);
   }, delay);
   state.uiTimeouts.push(timeout);
 }
@@ -3358,11 +3570,17 @@ function writeVarLen(value) {
   return bytes;
 }
 
-function updateNowPlaying(item, chord, index) {
+function updateNowPlaying(item, chord, index, section = state.activeSection) {
+  if (state.hasBSection && state.activeSection !== section && !state.editorPinned) {
+    state.activeSection = section;
+    state.progression = section === "B" ? getSectionProgression("B") : getSectionProgression("A");
+    updateSectionControls();
+  }
   state.currentChordNotes = new Set(chord.intervals.map((interval) => noteAt(chord.root, interval)));
   state.currentChordRoot = chord.root;
   state.uiChord = index;
-  if (state.selectedChord !== index) {
+  state.playingSection = section;
+  if (state.activeSection === section && state.selectedChord !== index) {
     state.selectedChord = index;
     updateChordEditor();
   }
@@ -3520,8 +3738,13 @@ function applyPreset({ tokens, beats = 4, mode = "major", exts = [] }) {
   if (modeSelect) modeSelect.value = mode;
   updateKeyBanner();
 
-  state.progression = tokens.map((token) => createChordItem(token, beats, null, exts));
+  state.sectionA = tokens.map((token) => createChordItem(token, beats, null, exts));
+  state.sectionB = [];
+  state.hasBSection = false;
+  state.activeSection = "A";
+  state.progression = state.sectionA;
   state.selectedChord = 0;
+  updateSectionControls();
   updateChordEditor();
   renderProgression();
 }
