@@ -523,12 +523,6 @@ body {
 }
 
 @media (max-width: 900px) {
-  .progression-block .key-row {
-    display: none;
-  }
-}
-
-@media (max-width: 900px) {
   .progression.large {
     grid-template-columns: repeat(2, minmax(150px, 1fr));
     gap: 14px;
@@ -705,35 +699,53 @@ input[type="text"] {
 }
 
 .mobile-transport {
-  position: sticky;
-  bottom: 16px;
-  margin: 0 8vw 20px;
-  padding: 12px 14px;
+  position: fixed;
+  left: 6vw;
+  right: 6vw;
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  margin: 0;
+  padding: 10px;
   display: none;
   align-items: center;
-  gap: 12px;
-  background: rgba(11, 14, 22, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 18px;
-  backdrop-filter: blur(10px);
-  z-index: 20;
-}
-
-.mobile-tempo {
-  display: flex;
-  align-items: center;
   gap: 8px;
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.8);
+  grid-template-columns: 42px minmax(150px, 1fr) 42px;
+  background: rgba(9, 12, 20, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  box-shadow: 0 14px 35px rgba(5, 7, 13, 0.45);
+  backdrop-filter: blur(12px);
+  z-index: 40;
 }
 
-.mobile-key {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.85);
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(255, 140, 66, 0.2);
-  border: 1px solid rgba(255, 140, 66, 0.4);
+.mobile-transport::before {
+  content: "";
+  grid-column: 1;
+  width: 42px;
+  height: 1px;
+}
+
+.mobile-transport .btn {
+  min-height: 42px;
+}
+
+.mobile-transport .btn.primary.play {
+  grid-column: 2;
+  width: 100%;
+  max-width: 280px;
+  justify-self: center;
+  margin: 0;
+  padding: 10px 16px;
+  font-size: 0.96rem;
+  box-shadow: 0 10px 24px rgba(255, 94, 168, 0.28);
+}
+
+.mobile-transport .mobile-icon {
+  grid-column: 3;
+  justify-self: end;
+  width: 42px;
+  min-width: 42px;
+  padding: 0;
+  font-size: 1rem;
 }
 
 .mobile-compact summary {
@@ -1678,8 +1690,8 @@ input[type="text"] {
   }
 
   .topbar {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
   }
 
   .brand-title.glow {
@@ -1692,7 +1704,7 @@ input[type="text"] {
   }
 
   .section {
-    padding: 28px 6vw 50px;
+    padding: 24px 6vw 86px;
   }
 
   .grid.practice-grid {
@@ -1744,9 +1756,21 @@ input[type="text"] {
     width: 100%;
   }
 
-  .key-row {
-    flex-direction: column;
-    align-items: flex-start;
+  .progression-block .key-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .key-pill-wrap {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .key-lock {
+    margin-left: 2px;
+    margin-bottom: 0;
   }
 
   .progression-block .sub-title {
@@ -1754,8 +1778,10 @@ input[type="text"] {
   }
 
   .tempo-pill {
+    flex-basis: 100%;
     width: 100%;
-    justify-content: space-between;
+    justify-content: flex-start;
+    padding: 8px 10px;
   }
 
   .tempo-pill .tempo-wrap {
@@ -1769,18 +1795,22 @@ input[type="text"] {
   }
 
   .progression-item {
-    min-height: 120px;
-    padding: 18px 20px;
+    min-height: 92px;
+    padding: 13px 14px;
   }
 
   .progression-item strong {
-    font-size: 1.1rem;
+    font-size: 1.02rem;
     display: block;
   }
 
   .progression-item span {
-    font-size: 0.9rem;
+    font-size: 0.75rem;
     display: block;
+  }
+
+  .progression-item .beats {
+    font-size: 0.64rem;
   }
 
   .progression-actions {
@@ -1793,7 +1823,7 @@ input[type="text"] {
   }
 
   .mobile-transport {
-    display: flex;
+    display: grid;
   }
 
   .transport-mini {
@@ -1820,7 +1850,9 @@ input[type="text"] {
   }
 
   .rhythm-pill {
-    font-size: 0.72rem;
+    font-size: 0.84rem;
+    min-height: 36px;
+    padding: 8px 12px;
   }
 
   .fretboard-wrapper {
@@ -1845,7 +1877,22 @@ input[type="text"] {
   }
 
   .form-chip {
-    font-size: 0.74rem;
+    font-size: 0.84rem;
+    min-height: 36px;
+    padding: 8px 12px;
+  }
+
+  .progression-inline-add {
+    right: -16px;
+    font-size: 1.18rem;
+  }
+
+  .progression-section-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: rgba(18, 23, 38, 0.96);
+    padding: 3px 0;
   }
 
   .footer {
@@ -1869,7 +1916,7 @@ input[type="text"] {
 
   .progression.large {
     grid-template-columns: 1fr;
-    grid-auto-rows: minmax(120px, auto);
+    grid-auto-rows: minmax(96px, auto);
   }
 
   .progression-item strong {
@@ -1896,7 +1943,7 @@ input[type="text"] {
   .progression.large {
     display: grid;
     grid-template-columns: 1fr;
-    grid-auto-rows: minmax(120px, auto);
+    grid-auto-rows: minmax(96px, auto);
     overflow: visible;
     gap: 10px;
   }

@@ -24,6 +24,8 @@ const tempoLabelMobile = document.getElementById("tempoLabelMobile");
 const tempoDownMobile = document.getElementById("tempoDownMobile");
 const tempoUpMobile = document.getElementById("tempoUpMobile");
 const mobilePlay = document.getElementById("mobilePlay");
+const mobileRewind = document.getElementById("mobileRewind");
+const mobileMidi = document.getElementById("mobileMidi");
 const mobileKey = document.getElementById("mobileKey");
 const diatonicChords = document.getElementById("diatonicChords");
 const progressionAEl = document.getElementById("progressionA");
@@ -533,13 +535,18 @@ function init() {
   setStyle(state.style);
   updateSpicySuggestion();
   updateKeyBanner();
+  let hasFretboardPref = false;
   try {
     const prefs = JSON.parse(localStorage.getItem(UI_PREFS_KEY) || "{}");
     if (typeof prefs.showFretboard === "boolean" && fretToggle) {
       fretToggle.checked = prefs.showFretboard;
+      hasFretboardPref = true;
     }
   } catch (error) {
     // ignore malformed UI prefs
+  }
+  if (!hasFretboardPref && window.innerWidth <= 900 && fretToggle) {
+    fretToggle.checked = false;
   }
   setFretboardVisibility(!!fretToggle?.checked);
   initProgressionLibrary();
@@ -608,6 +615,12 @@ function init() {
 
   if (mobilePlay) {
     mobilePlay.addEventListener("click", togglePlayback);
+  }
+  if (mobileRewind) {
+    mobileRewind.addEventListener("click", rewindToStart);
+  }
+  if (mobileMidi) {
+    mobileMidi.addEventListener("click", downloadMidi);
   }
   if (rhythmChip) {
     rhythmChip.addEventListener("click", (event) => {
