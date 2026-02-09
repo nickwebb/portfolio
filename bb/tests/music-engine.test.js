@@ -462,6 +462,16 @@ test("chooseMusicalProgression with spice none stays diatonic in major", () => {
   }
 });
 
+test("chooseMusicalProgression with spice none stays diatonic in dorian", () => {
+  const { chooseMusicalProgression, isDiatonicRomanToken } = loadEngine();
+  for (let i = 0; i < 40; i += 1) {
+    const tokens = chooseMusicalProgression(4, "dorian", "none");
+    assert.equal(tokens.length, 4);
+    assert.ok(tokens.every((token) => isDiatonicRomanToken(token, "dorian")));
+    assert.ok(tokens[0] === "i" || tokens[tokens.length - 1] === "i");
+  }
+});
+
 test("in C major, spicy bII resolves to Db root", () => {
   const { state, chordFromDegree } = loadEngine();
   resetState(state);
@@ -592,4 +602,25 @@ test("scale-only mode follows key mode and includes spicy chord tones", () => {
   assert.ok(highlightSet.has("G"));
   assert.ok(highlightSet.has("B"));
   assert.ok(highlightSet.has("D"));
+});
+
+test("scale-only mode follows dorian scale tones", () => {
+  const { state, getHighlightNotes, scaleOnlyToggle } = loadEngine();
+  resetState(state);
+  state.mode = "dorian";
+  state.key = "F#";
+  if (scaleOnlyToggle) scaleOnlyToggle.checked = true;
+  state.currentChordNotes = new Set();
+
+  const { highlightSet } = getHighlightNotes();
+  assert.ok(highlightSet.has("D#"));
+  assert.ok(!highlightSet.has("D"));
+});
+
+test("mode picker includes advanced modal options", () => {
+  const html = fs.readFileSync("/Users/nick/codex/portfolio/bb.html", "utf8");
+  assert.ok(html.includes('data-mode="dorian"'));
+  assert.ok(html.includes('data-mode="mixolydian"'));
+  assert.ok(html.includes('data-mode="lydian"'));
+  assert.ok(html.includes('data-mode="phrygian"'));
 });

@@ -7,14 +7,76 @@ const MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11];
 const MINOR_SCALE = [0, 2, 3, 5, 7, 8, 10];
 const MODE_DATA = {
   major: {
+    label: "Major",
+    family: "major",
+    scale: MAJOR_SCALE,
+    tonic: "I",
     degrees: ["I", "ii", "iii", "IV", "V", "vi", "vii°"],
     qualities: ["maj", "min", "min", "maj", "maj", "min", "dim"]
   },
   minor: {
+    label: "Minor",
+    family: "minor",
+    scale: MINOR_SCALE,
+    tonic: "i",
     degrees: ["i", "ii°", "III", "iv", "v", "VI", "VII"],
     qualities: ["min", "dim", "maj", "min", "min", "maj", "maj"]
+  },
+  dorian: {
+    label: "Dorian",
+    family: "minor",
+    scale: [0, 2, 3, 5, 7, 9, 10],
+    tonic: "i",
+    degrees: ["i", "ii", "bIII", "IV", "v", "vi°", "bVII"],
+    qualities: ["min", "min", "maj", "maj", "min", "dim", "maj"]
+  },
+  mixolydian: {
+    label: "Mixolydian",
+    family: "major",
+    scale: [0, 2, 4, 5, 7, 9, 10],
+    tonic: "I",
+    degrees: ["I", "ii", "iii°", "IV", "v", "vi", "bVII"],
+    qualities: ["maj", "min", "dim", "maj", "min", "min", "maj"]
+  },
+  lydian: {
+    label: "Lydian",
+    family: "major",
+    scale: [0, 2, 4, 6, 7, 9, 11],
+    tonic: "I",
+    degrees: ["I", "II", "iii", "#iv°", "V", "vi", "vii"],
+    qualities: ["maj", "maj", "min", "dim", "maj", "min", "min"]
+  },
+  phrygian: {
+    label: "Phrygian",
+    family: "minor",
+    scale: [0, 1, 3, 5, 7, 8, 10],
+    tonic: "i",
+    degrees: ["i", "bII", "bIII", "iv", "v°", "bVI", "bvii"],
+    qualities: ["min", "maj", "maj", "min", "dim", "maj", "min"]
   }
 };
+
+const BASIC_MODE_OPTIONS = ["major", "minor"];
+
+function getModeConfig(mode) {
+  return MODE_DATA[mode] || MODE_DATA.major;
+}
+
+function getModeScale(mode) {
+  return getModeConfig(mode).scale || MAJOR_SCALE;
+}
+
+function getModeFamily(mode) {
+  return getModeConfig(mode).family || "major";
+}
+
+function getModeTonicToken(mode) {
+  return getModeConfig(mode).tonic || "I";
+}
+
+function normalizeMode(mode) {
+  return MODE_DATA[mode] ? mode : "major";
+}
 
 const keySelect = document.getElementById("keySelect");
 const modeSelect = document.getElementById("modeSelect");
@@ -324,6 +386,8 @@ const scales = {
   "Major": MAJOR_SCALE,
   "Natural Minor": MINOR_SCALE,
   "Dorian": [0, 2, 3, 5, 7, 9, 10],
+  "Phrygian": [0, 1, 3, 5, 7, 8, 10],
+  "Lydian": [0, 2, 4, 6, 7, 9, 11],
   "Mixolydian": [0, 2, 4, 5, 7, 9, 10],
   "Melodic Minor": [0, 2, 3, 5, 7, 9, 11],
   "Harmonic Minor": [0, 2, 3, 5, 7, 8, 11],
@@ -445,36 +509,41 @@ const SONG_CORPUS = {
   ]
 };
 
-const DIATONIC_ROMANS = {
-  major: new Set(["I", "ii", "iii", "IV", "V", "vi", "vii°"]),
-  minor: new Set(["i", "ii°", "III", "iv", "v", "VI", "VII"])
-};
+const DIATONIC_ROMANS = Object.fromEntries(
+  Object.entries(MODE_DATA).map(([mode, cfg]) => {
+    const tokens = new Set(cfg.degrees);
+    if (mode === "minor") {
+      // Accept common Aeolian aliases in user/corpus input.
+      tokens.add("bIII");
+      tokens.add("bVI");
+      tokens.add("bVII");
+    }
+    return [mode, tokens];
+  })
+);
 
 function isDiatonicRomanToken(token, mode = state.mode) {
   const parsed = romanToDegree(token);
   if (!parsed) return false;
-  if (DIATONIC_ROMANS[mode]?.has(token)) return true;
-  if (mode === "minor" && parsed.accidental === -1 && (parsed.degree === 2 || parsed.degree === 5 || parsed.degree === 6)) {
-    return true;
-  }
-  return false;
+  const normalizedMode = normalizeMode(mode);
+  return DIATONIC_ROMANS[normalizedMode]?.has(token) || false;
 }
 
 function toDiatonicRomanToken(token, mode = state.mode) {
   if (isDiatonicRomanToken(token, mode)) {
-    if (mode === "minor") {
+    if (normalizeMode(mode) === "minor") {
       if (token === "bIII") return "III";
       if (token === "bVI") return "VI";
       if (token === "bVII") return "VII";
     }
     return token;
   }
-  if (mode === "major") {
-    const map = { bVII: "V", bVI: "vi", bIII: "iii", iv: "IV", bII: "ii", "#iv°": "vii°" };
-    return map[token] || "I";
+  const parsed = romanToDegree(token);
+  if (parsed) {
+    const config = getModeConfig(mode);
+    return config.degrees[parsed.degree] || getModeTonicToken(mode);
   }
-  const map = { V: "v", bII: "ii°", bVI: "VI", bVII: "VII", bIII: "III" };
-  return map[token] || "i";
+  return getModeTonicToken(mode);
 }
 
 const DRUM_PATTERN_BANK = {
@@ -646,7 +715,13 @@ function init() {
   });
 
   modeSelect.addEventListener("change", () => {
-    state.mode = modeSelect.value;
+    if (modeSelect.value === "random") {
+      const pick = BASIC_MODE_OPTIONS[Math.floor(Math.random() * BASIC_MODE_OPTIONS.length)];
+      state.mode = pick;
+    } else {
+      state.mode = normalizeMode(modeSelect.value);
+      modeSelect.value = state.mode;
+    }
     buildChordPalette();
     updateScaleNotes();
     if (arpSelect) updateArpNotes();
@@ -1164,7 +1239,7 @@ function init() {
       state.activeSection = "A";
       state.progression = state.sectionA;
       state.key = data.key || state.key;
-      state.mode = data.mode || state.mode;
+      state.mode = normalizeMode(data.mode || state.mode);
       state.tempo = data.tempo || state.tempo;
       updateKeyBanner();
       if (tempoSlider) {
@@ -1701,7 +1776,7 @@ function updateTempo() {
 
 function updateKeyBanner() {
   if (!currentKey) return;
-  const modeLabel = state.mode === "major" ? "Major" : "Minor";
+  const modeLabel = getModeConfig(state.mode).label;
   currentKey.textContent = `${state.key} ${modeLabel}`;
   if (keyBanner) {
     keyBanner.classList.remove("pulse");
@@ -1757,7 +1832,7 @@ function refreshKeyPicker() {
     if (keyPicker) {
       keyPicker.querySelectorAll("[data-mode]").forEach((button) => {
         button.addEventListener("click", () => {
-          state.mode = button.dataset.mode;
+          state.mode = normalizeMode(button.dataset.mode);
           if (modeSelect) modeSelect.value = state.mode;
           updateKeyBanner();
           buildChordPalette();
@@ -1789,7 +1864,7 @@ function updateSpicySuggestion() {
 }
 
 function getSpicySuggestions() {
-  const rootIndex = NOTES.indexOf(state.key);
+  const rootIndex = NOTES.indexOf(FLAT_EQUIV[state.key] || state.key);
   const buildToken = (interval, quality, preferFlats = false) => {
     const root = preferFlats ? FLAT_NOTES[(rootIndex + interval + 1200) % 12] : NOTES[(rootIndex + interval + 1200) % 12];
     if (quality === "min") return `${root}m`;
@@ -1800,7 +1875,7 @@ function getSpicySuggestions() {
     return `${root}`;
   };
 
-  if (state.mode === "major") {
+  if (getModeFamily(state.mode) === "major") {
     return [
       { roman: "bVII", token: buildToken(10, "maj", true) },
       { roman: "bVI", token: buildToken(8, "maj", true) },
@@ -2261,7 +2336,7 @@ function weightedPick(items, weightFn = (item) => item.weight || 1) {
 
 function buildTransitionMap(mode, corpusEntries = null) {
   const map = {};
-  const corpus = corpusEntries || SONG_CORPUS[mode] || [];
+  const corpus = corpusEntries || getCorpusForMode(mode);
   corpus.forEach((entry) => {
     const tokens = entry.tokens || [];
     const weight = entry.weight || 1;
@@ -2281,16 +2356,70 @@ function buildTransitionMap(mode, corpusEntries = null) {
   return map;
 }
 
+const MODAL_PROGRESSIONS = {
+  dorian: [
+    ["i", "IV", "i", "bVII"],
+    ["i", "ii", "i", "IV"],
+    ["i", "bIII", "IV", "i"],
+    ["i", "v", "IV", "i"]
+  ],
+  mixolydian: [
+    ["I", "bVII", "IV", "I"],
+    ["I", "v", "IV", "I"],
+    ["I", "bVII", "v", "IV"],
+    ["I", "IV", "bVII", "I"]
+  ],
+  lydian: [
+    ["I", "II", "V", "I"],
+    ["I", "V", "II", "I"],
+    ["I", "II", "vii", "I"],
+    ["I", "II", "V", "II"]
+  ],
+  phrygian: [
+    ["i", "bII", "i", "bVII"],
+    ["i", "bII", "bVII", "i"],
+    ["i", "bVI", "bII", "i"],
+    ["i", "v°", "bII", "i"]
+  ]
+};
+
+function getCorpusForMode(mode) {
+  if (SONG_CORPUS[mode]?.length) return SONG_CORPUS[mode];
+  const family = getModeFamily(mode);
+  return SONG_CORPUS[family] || SONG_CORPUS.major;
+}
+
 function getBorrowedPool(mode) {
-  if (mode === "major") {
+  const family = getModeFamily(mode);
+  if (mode === "dorian") return ["I", "bII", "V", "VI"];
+  if (mode === "mixolydian") return ["V", "vi", "II", "bVI"];
+  if (mode === "lydian") return ["IV", "vi", "bVII", "ii"];
+  if (mode === "phrygian") return ["V", "iv", "VI", "bIII"];
+  if (family === "major") {
     return ["bVII", "bVI", "iv", "bIII", "bII"];
   }
   return ["V", "bII", "bVI", "bVII"];
 }
 
 function suggestNextTokenFromCorpus(previousToken, mode = state.mode) {
-  const corpus = SONG_CORPUS[mode] || SONG_CORPUS.major;
-  const tonic = mode === "major" ? "I" : "i";
+  const modalTemplates = MODAL_PROGRESSIONS[mode];
+  const tonic = getModeTonicToken(mode);
+  if (modalTemplates?.length) {
+    const prev = previousToken && romanToDegree(previousToken) ? previousToken : tonic;
+    const options = [];
+    modalTemplates.forEach((tokens) => {
+      for (let i = 0; i < tokens.length; i += 1) {
+        if (tokens[i] !== prev) continue;
+        options.push(tokens[(i + 1) % tokens.length]);
+      }
+    });
+    if (options.length > 0) {
+      return options[Math.floor(Math.random() * options.length)];
+    }
+    return modalTemplates[0][0] || tonic;
+  }
+
+  const corpus = getCorpusForMode(mode);
   const prev = previousToken && romanToDegree(previousToken) ? previousToken : tonic;
   const transitions = buildTransitionMap(mode);
   const options = transitions[prev] || [];
@@ -2308,14 +2437,19 @@ function suggestNextTokenFromCorpus(previousToken, mode = state.mode) {
 }
 
 function chooseMusicalProgression(length, mode, spice) {
-  const source = SONG_CORPUS[mode] || SONG_CORPUS.major;
+  const normalizedMode = normalizeMode(mode);
+  if (MODAL_PROGRESSIONS[normalizedMode]?.length) {
+    return chooseModalProgression(length, normalizedMode, spice);
+  }
+
+  const source = getCorpusForMode(normalizedMode);
   let corpus = source;
   if (spice === "none") {
-    const filtered = source.filter((entry) => (entry.tokens || []).every((token) => isDiatonicRomanToken(token, mode)));
+    const filtered = source.filter((entry) => (entry.tokens || []).every((token) => isDiatonicRomanToken(token, normalizedMode)));
     if (filtered.length > 0) corpus = filtered;
   }
-  const transitionMap = buildTransitionMap(mode, corpus);
-  const tonic = mode === "major" ? "I" : "i";
+  const transitionMap = buildTransitionMap(normalizedMode, corpus);
+  const tonic = getModeTonicToken(normalizedMode);
   const seed = weightedPick(corpus, (entry) => entry.weight || 1) || { tokens: [tonic] };
   let picks = [];
   if (length <= seed.tokens.length) {
@@ -2342,6 +2476,53 @@ function chooseMusicalProgression(length, mode, spice) {
 
   const spiceChance = spice === "bold" ? 0.45 : spice === "light" ? 0.2 : 0;
   const spiceCap = spice === "bold" ? Math.max(1, Math.floor(length / 3)) : spice === "light" ? 1 : 0;
+  const borrowedPool = getBorrowedPool(normalizedMode);
+  let replaced = 0;
+  for (let i = 1; i < picks.length - 1 && replaced < spiceCap; i += 1) {
+    if (Math.random() >= spiceChance) continue;
+    if (!isDiatonicRomanToken(picks[i], normalizedMode)) continue;
+    picks[i] = borrowedPool[Math.floor(Math.random() * borrowedPool.length)];
+    replaced += 1;
+  }
+
+  if (picks.length > 0 && picks[0] !== tonic && picks[picks.length - 1] !== tonic) {
+    if (Math.random() < 0.5) picks[0] = tonic;
+    else picks[picks.length - 1] = tonic;
+  }
+
+  if (spice === "none") {
+    picks = picks.map((token) => toDiatonicRomanToken(token, normalizedMode));
+  }
+
+  return picks.slice(0, length);
+}
+
+function chooseModalProgression(length, mode, spice) {
+  const templates = MODAL_PROGRESSIONS[mode] || [];
+  const tonic = getModeTonicToken(mode);
+  let picks = [];
+
+  if (templates.length > 0) {
+    const seed = templates[Math.floor(Math.random() * templates.length)];
+    if (length <= seed.length) {
+      picks = seed.slice(0, length);
+    } else {
+      picks = seed.slice();
+      while (picks.length < length) {
+        picks.push(seed[picks.length % seed.length] || tonic);
+      }
+    }
+  } else {
+    const degrees = getModeConfig(mode).degrees || [tonic];
+    const pool = degrees.filter((token) => token !== tonic);
+    picks = [tonic];
+    while (picks.length < length) {
+      picks.push(pool[Math.floor(Math.random() * Math.max(1, pool.length))] || tonic);
+    }
+  }
+
+  const spiceChance = spice === "bold" ? 0.35 : spice === "light" ? 0.15 : 0;
+  const spiceCap = spice === "bold" ? Math.max(1, Math.floor(length / 4)) : spice === "light" ? 1 : 0;
   const borrowedPool = getBorrowedPool(mode);
   let replaced = 0;
   for (let i = 1; i < picks.length - 1 && replaced < spiceCap; i += 1) {
@@ -2369,9 +2550,9 @@ function getExtensionForToken(token, mode, spice) {
   if (token === "V" || token === "v" || token === "bVII") {
     return Math.random() < 0.6 ? ["7"] : ["9"];
   }
-  const tonic = mode === "major" ? "I" : "i";
+  const tonic = getModeTonicToken(mode);
   if (token === tonic) {
-    return mode === "major" ? ["maj7"] : ["7"];
+    return getModeFamily(mode) === "major" ? ["maj7"] : ["7"];
   }
   const options = [["7"], ["9"], ["add9"], ["sus4"], ["maj7"]];
   return options[Math.floor(Math.random() * options.length)];
@@ -2393,10 +2574,14 @@ function generateProgression() {
   state.key = normalizeKeyDisplay(chosenKey);
   if (keySelect) keySelect.value = FLAT_EQUIV[state.key] || state.key;
 
-  const modeOptions = ["major", "minor"];
-  const chosenMode = modeSelect?.value === "random" ? modeOptions[Math.floor(Math.random() * modeOptions.length)] : modeSelect?.value || "major";
+  const selectedMode = modeSelect?.value || "major";
+  const chosenMode = selectedMode === "random"
+    ? BASIC_MODE_OPTIONS[Math.floor(Math.random() * BASIC_MODE_OPTIONS.length)]
+    : normalizeMode(selectedMode);
   state.mode = chosenMode;
-  modeSelect.value = chosenMode;
+  if (modeSelect && selectedMode !== "random") {
+    modeSelect.value = chosenMode;
+  }
 
   const styleOptions = ["clean", "neosoul", "jazz", "cinematic"];
   const chosenStyle = styleSelect?.value === "random" ? styleOptions[Math.floor(Math.random() * styleOptions.length)] : styleSelect?.value || "clean";
@@ -2512,8 +2697,9 @@ function buildChordPalette() {
 function buildDiatonicChords() {
   if (!diatonicChords) return;
   diatonicChords.innerHTML = "";
-  const scale = state.mode === "major" ? MAJOR_SCALE : MINOR_SCALE;
-  const { degrees, qualities } = MODE_DATA[state.mode];
+  const modeConfig = getModeConfig(state.mode);
+  const scale = getModeScale(state.mode);
+  const { degrees, qualities } = modeConfig;
   scale.forEach((interval, idx) => {
     const root = noteAt(state.key, interval);
     const quality = qualities[idx];
@@ -2527,7 +2713,7 @@ function buildDiatonicChords() {
 function buildExtendedChords() {
   if (!extendedChords) return;
   extendedChords.innerHTML = "";
-  const { degrees, qualities } = MODE_DATA[state.mode];
+  const { degrees, qualities } = getModeConfig(state.mode);
   degrees.forEach((degree, idx) => {
     const quality = qualities[idx];
     const exts = quality === "dim" ? ["7", "9"] : ["6", "7", "9"];
@@ -2846,7 +3032,8 @@ function romanToDegree(token) {
 function chordFromDegree(token) {
   const parsed = romanToDegree(token);
   if (!parsed) return { root: "C", intervals: [0, 4, 7], quality: "maj" };
-  const scale = state.mode === "major" ? MAJOR_SCALE : MINOR_SCALE;
+  const scale = getModeScale(state.mode);
+  const modeConfig = getModeConfig(state.mode);
   const { degree } = parsed;
   let { accidental } = parsed;
   // In natural minor, III/VI/VII are already flat relative to major.
@@ -2855,7 +3042,7 @@ function chordFromDegree(token) {
     accidental = 0;
   }
   const root = noteAt(state.key, scale[degree] + accidental, shouldUseFlatsForToken(token));
-  let quality = MODE_DATA[state.mode].qualities[degree];
+  let quality = modeConfig.qualities[degree];
   const normalized = token.replace(/[^IViv°]/g, "");
   if (normalized.includes("°")) {
     quality = "dim";
@@ -4695,7 +4882,7 @@ function getHighlightNotes() {
   const normalize = (note) => FLAT_EQUIV[note] || note;
   const normalizedChord = new Set(Array.from(chordSet).map(normalize));
   const scaleOnly = !!scaleOnlyToggle?.checked;
-  const modeScale = state.mode === "minor" ? MINOR_SCALE : MAJOR_SCALE;
+  const modeScale = getModeScale(state.mode);
   const scaleIntervals = scaleOnly ? modeScale : (scales[scaleSelect?.value] || MAJOR_SCALE);
   const scaleSet = new Set(scaleIntervals.map((interval) => normalize(noteAt(state.key, interval))));
   if (scaleOnly) {
@@ -4834,8 +5021,8 @@ function applyPreset({ tokens, beats = 4, mode = "major", exts = [] }) {
     state.key = normalizeKeyDisplay(randomKey);
     if (keySelect) keySelect.value = FLAT_EQUIV[state.key] || state.key;
   }
-  state.mode = mode;
-  if (modeSelect) modeSelect.value = mode;
+  state.mode = normalizeMode(mode);
+  if (modeSelect) modeSelect.value = state.mode;
   updateKeyBanner();
 
   state.sectionA = tokens.map((token) => createChordItem(token, beats, null, exts));

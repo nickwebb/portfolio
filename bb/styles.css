@@ -518,6 +518,7 @@ body {
 .key-picker-modes {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .key-banner span {
