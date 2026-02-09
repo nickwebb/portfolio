@@ -80,6 +80,18 @@
                   <span id="tempoLabel">100 bpm</span>
                 </div>
               </div>
+              <button
+                id="refreshProgression"
+                class="key-refresh"
+                type="button"
+                aria-label="Refresh chord progression"
+                title="Refresh progression"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M20 6v6h-6" />
+                  <path d="M20 12a8 8 0 1 1-2.3-5.7L20 8.6" />
+                </svg>
+              </button>
               <div class="playback transport-mini">
                 <button id="playBtn" class="btn primary play">Play</button>
                 <button id="rewindBtn" class="btn ghost rewind" type="button" aria-label="Rewind to start">⏮</button>
@@ -105,51 +117,9 @@
               <div class="form-chip-wrap">
                 <button id="formChip" class="form-chip" type="button" aria-expanded="false">Form: A x 2</button>
                 <div id="formEditor" class="form-editor hidden" aria-hidden="true">
-                <label>
-                  A Repeats
-                  <select id="formARepeats">
-                    <option value="1">1</option>
-                    <option value="2" selected>2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                    <option value="5">5</option>
-                    <option value="6">6</option>
-                    <option value="7">7</option>
-                    <option value="8">8</option>
-                    <option value="9">9</option>
-                    <option value="10">10</option>
-                    <option value="11">11</option>
-                    <option value="12">12</option>
-                    <option value="13">13</option>
-                    <option value="14">14</option>
-                    <option value="15">15</option>
-                    <option value="16">16</option>
-                  </select>
-                </label>
                 <label class="toggle">
-                  Include B Section
+                  B Section
                   <input id="formHasB" type="checkbox" />
-                </label>
-                <label>
-                  B Repeats
-                  <select id="formBRepeats">
-                    <option value="1">1</option>
-                    <option value="2" selected>2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                    <option value="5">5</option>
-                    <option value="6">6</option>
-                    <option value="7">7</option>
-                    <option value="8">8</option>
-                    <option value="9">9</option>
-                    <option value="10">10</option>
-                    <option value="11">11</option>
-                    <option value="12">12</option>
-                    <option value="13">13</option>
-                    <option value="14">14</option>
-                    <option value="15">15</option>
-                    <option value="16">16</option>
-                  </select>
                 </label>
               </div>
             </div>

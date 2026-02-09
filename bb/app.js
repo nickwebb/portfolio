@@ -134,6 +134,7 @@ const formBRepeats = document.getElementById("formBRepeats");
 const formHasB = document.getElementById("formHasB");
 const keyPicker = document.getElementById("keyPicker");
 const keyPickerNotes = document.getElementById("keyPickerNotes");
+const refreshProgressionBtn = document.getElementById("refreshProgression");
 const downloadMidiBtn = document.getElementById("downloadMidi");
 const keyLockBtn = document.getElementById("keyLockBtn");
 const countInEl = document.getElementById("countIn");
@@ -267,6 +268,7 @@ const SAVED_PROG_KEY = "gpl_saved_progressions";
 const LATENCY_COMP_KEY = "gpl_latency_comp";
 const DEBUG_AUDIO = true;
 const LOG_SAMPLE_MISS = true;
+let isMobileLayout = window.innerWidth <= 900;
 
 const scales = {
   "Major": MAJOR_SCALE,
@@ -750,7 +752,14 @@ function init() {
     if (event.target.closest("#chordPopup") || event.target.closest(".progression-item")) return;
     closeChordPopup();
   });
-  window.addEventListener("resize", () => positionChordPopup());
+  window.addEventListener("resize", () => {
+    positionChordPopup();
+    const mobileNow = window.innerWidth <= 900;
+    if (mobileNow !== isMobileLayout) {
+      isMobileLayout = mobileNow;
+      renderProgression();
+    }
+  });
 
   clearProg.addEventListener("click", () => {
     state.progression = [];
@@ -795,6 +804,7 @@ function init() {
   playBtn.addEventListener("click", togglePlayback);
   if (rewindBtn) rewindBtn.addEventListener("click", rewindToStart);
   if (downloadMidiBtn) downloadMidiBtn.addEventListener("click", downloadMidi);
+  if (refreshProgressionBtn) refreshProgressionBtn.addEventListener("click", refreshProgression);
 
   styleSelect.addEventListener("change", () => {
     setStyle(styleSelect.value);
@@ -2177,7 +2187,7 @@ function generateProgression() {
   if (tempoLabelMobile) tempoLabelMobile.textContent = `${randomTempo} bpm`;
 
   const randomKey = NOTES[Math.floor(Math.random() * NOTES.length)];
-  const chosenKey = state.keyLocked ? state.key : (keySelect?.value === "random" ? randomKey : keySelect?.value || randomKey);
+  const chosenKey = state.keyLocked ? state.key : randomKey;
   state.key = chosenKey;
   if (keySelect) keySelect.value = chosenKey;
 
@@ -2258,6 +2268,27 @@ function generateProgression() {
   updateSectionControls();
   updateChordEditor();
   renderProgression();
+}
+
+function refreshProgression() {
+  if (state.isPlaying || state.isCountingIn || state.isPaused) {
+    if (!state.isPaused) pausePlayback();
+    clearCountIn();
+    if (state.timerId) {
+      clearInterval(state.timerId);
+      state.timerId = null;
+    }
+    state.uiTimeouts.forEach((id) => clearTimeout(id));
+    state.uiTimeouts = [];
+    state.isPlaying = false;
+    state.isPaused = false;
+    state.isCountingIn = false;
+    state.pauseStartTime = null;
+    state.lastAutoScrollSection = null;
+    resetTransportTimeline();
+    updatePlayButton();
+  }
+  generateProgression();
 }
 
 function buildFretMarkers() {
@@ -2407,25 +2438,38 @@ function renderProgression() {
       renderProgression();
     };
 
+    const useMobileAdd = window.innerWidth <= 900;
     if (lastChordEl) {
-      const inlineAddBtn = document.createElement("button");
-      inlineAddBtn.className = "progression-inline-add";
-      inlineAddBtn.type = "button";
-      inlineAddBtn.dataset.section = section;
-      inlineAddBtn.setAttribute("aria-label", `Add chord to ${section} section`);
-      inlineAddBtn.textContent = "+";
-      inlineAddBtn.addEventListener("click", (event) => {
-        event.stopPropagation();
-        addChord();
-      });
-      lastChordEl.appendChild(inlineAddBtn);
+      if (useMobileAdd) {
+        const mobileAddBtn = document.createElement("button");
+        mobileAddBtn.className = "progression-mobile-add";
+        mobileAddBtn.type = "button";
+        mobileAddBtn.dataset.section = section;
+        mobileAddBtn.setAttribute("aria-label", `Add chord to ${section} section`);
+        mobileAddBtn.textContent = "+";
+        mobileAddBtn.addEventListener("click", addChord);
+        container.appendChild(mobileAddBtn);
+      } else {
+        const inlineAddBtn = document.createElement("button");
+        inlineAddBtn.className = "progression-inline-add";
+        inlineAddBtn.type = "button";
+        inlineAddBtn.dataset.section = section;
+        inlineAddBtn.setAttribute("aria-label", `Add chord to ${section} section`);
+        inlineAddBtn.textContent = "+";
+        inlineAddBtn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          addChord();
+        });
+        lastChordEl.appendChild(inlineAddBtn);
+      }
     } else {
       const emptyAddBtn = document.createElement("button");
-      emptyAddBtn.className = "progression-add";
+      emptyAddBtn.className = useMobileAdd ? "progression-mobile-add" : "progression-add";
       emptyAddBtn.type = "button";
       emptyAddBtn.dataset.section = section;
       emptyAddBtn.setAttribute("aria-label", `Add chord to ${section} section`);
-      emptyAddBtn.innerHTML = "<span>+</span>";
+      if (useMobileAdd) emptyAddBtn.textContent = "+";
+      else emptyAddBtn.innerHTML = "<span>+</span>";
       emptyAddBtn.addEventListener("click", addChord);
       container.appendChild(emptyAddBtn);
     }
@@ -4364,6 +4408,17 @@ function applyPreset({ tokens, beats = 4, mode = "major", exts = [] }) {
   state.activeSection = "A";
   state.progression = state.sectionA;
   state.selectedChord = 0;
+  state.selectionDirtyForPlayback = true;
+  state.playbackSequence = buildPlaybackSequence();
+
+  if (state.isPlaying) {
+    if (!state.isPaused) pausePlayback();
+    resetTransportTimeline();
+    primePlaybackFromSelectedChord();
+    state.lastAutoScrollSection = null;
+    scrollToSectionOnMobile("A", true);
+  }
+
   updateSectionControls();
   updateChordEditor();
   renderProgression();
