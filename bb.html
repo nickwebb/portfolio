@@ -23,7 +23,10 @@
           <path fill="url(#bbPickGradient)" d="M32 4c16 0 28 12 28 28 0 18-12 33-28 36C16 65 4 50 4 32 4 16 16 4 32 4z" />
           <path fill="none" stroke="#ffffff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" d="M18 38c5-10 10 10 15 0s10 10 13-2" />
         </svg>
-        <div class="brand-title glow">BACKING BUDDY</div>
+        <div class="brand-copy">
+          <div class="brand-title glow">BACKING BUDDY</div>
+          <div class="brand-sub">make musical backing tracks instantly</div>
+        </div>
       </div>
     </nav>
   </header>
@@ -117,9 +120,17 @@
               <div class="form-chip-wrap">
                 <button id="formChip" class="form-chip" type="button" aria-expanded="false">Form: A x 2</button>
                 <div id="formEditor" class="form-editor hidden" aria-hidden="true">
+                <label>
+                  A Loops
+                  <select id="formARepeats"></select>
+                </label>
                 <label class="toggle">
                   B Section
                   <input id="formHasB" type="checkbox" />
+                </label>
+                <label>
+                  B Loops
+                  <select id="formBRepeats"></select>
                 </label>
               </div>
             </div>
@@ -174,12 +185,23 @@
       </div>
 
       <div class="card builder">
-        <div class="preset-row">
-          <button id="presetOneChord" class="btn ghost small">One Chord Backing Track</button>
-          <button id="presetBlues" class="btn ghost small">12 Bar Blues</button>
-          <button id="presetFamous" class="btn ghost small">Famous Progression</button>
-          <button id="presetIIVI" class="btn ghost small">ii–V–I Turnaround</button>
-          <button id="presetMinorLoop" class="btn ghost small">Minor Loop</button>
+        <div class="preset-carousel">
+          <button id="presetPrev" class="preset-nav" type="button" aria-label="Previous preset page">‹</button>
+          <div id="presetRow" class="preset-row">
+            <button id="presetOneChord" class="btn ghost small">One Chord</button>
+            <button id="presetBlues" class="btn ghost small">12 Bar Blues</button>
+            <button id="presetFamous" class="btn ghost small">Famous Progressions</button>
+            <button id="presetIIVI" class="btn ghost small">ii–V–I</button>
+            <button id="presetIIVIMinor" class="btn ghost small">iiø–V–i</button>
+            <button id="presetAxisInverse" class="btn ghost small">vi–IV–I–V</button>
+            <button id="presetPopLift" class="btn ghost small">I–V–ii–IV</button>
+            <button id="presetAeolianRock" class="btn ghost small">Aeolian Rock</button>
+            <button id="presetMinorCadence" class="btn ghost small">i–iv–V–i</button>
+            <button id="presetClassicRock" class="btn ghost small">Classic Rock</button>
+            <button id="presetAndalusian" class="btn ghost small">Andalusian</button>
+            <button id="presetDorianVamp" class="btn ghost small">Dorian Vamp</button>
+          </div>
+          <button id="presetNext" class="preset-nav" type="button" aria-label="Next preset page">›</button>
         </div>
         <div class="generator">
           <div class="generator-row">

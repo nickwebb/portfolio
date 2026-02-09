@@ -92,6 +92,7 @@ globalThis.__btgExports = {
   isDiatonicRomanToken,
   chordFromItem,
   describeItem,
+  getChordRhythm,
   buildMidiFile,
   getRhythmNameForSection,
   getDrumPatternForSection
@@ -426,12 +427,11 @@ test("applyPreset clears B section and rebuilds playback sequence from A only", 
   assert.ok(state.playbackSequence.every((entry) => entry.item.token === "I"));
 });
 
-test("form popup markup is simplified to B section checkbox only", () => {
+test("form popup markup includes repeat controls and B section toggle", () => {
   const html = fs.readFileSync("/Users/nick/codex/portfolio/bb.html", "utf8");
   assert.ok(html.includes('id="formHasB"'));
-  assert.ok(html.includes(">B Section<"));
-  assert.ok(!html.includes('id="formARepeats"'));
-  assert.ok(!html.includes('id="formBRepeats"'));
+  assert.ok(html.includes('id="formARepeats"'));
+  assert.ok(html.includes('id="formBRepeats"'));
 });
 
 test("refresh button is mobile-only in stylesheet", () => {
@@ -480,4 +480,12 @@ test("in C major, spicy bIIadd9 is labeled with Db spelling (not Bii)", () => {
   assert.ok(description.name.startsWith("Db"));
   assert.equal(chord.root, "Db");
   assert.ok(!description.name.toLowerCase().includes("bii"));
+});
+
+test("whole-note rhythm repeats once per bar for long chords", () => {
+  const { state, getChordRhythm } = loadEngine();
+  resetState(state);
+  state.rhythm = "whole";
+  const hits = getChordRhythm(16, "A");
+  assert.equal(JSON.stringify(hits), JSON.stringify([0, 4, 8, 12]));
 });

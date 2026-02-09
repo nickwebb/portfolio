@@ -151,7 +151,17 @@ const presetOneChord = document.getElementById("presetOneChord");
 const presetBlues = document.getElementById("presetBlues");
 const presetFamous = document.getElementById("presetFamous");
 const presetIIVI = document.getElementById("presetIIVI");
-const presetMinorLoop = document.getElementById("presetMinorLoop");
+const presetIIVIMinor = document.getElementById("presetIIVIMinor");
+const presetAxisInverse = document.getElementById("presetAxisInverse");
+const presetPopLift = document.getElementById("presetPopLift");
+const presetAeolianRock = document.getElementById("presetAeolianRock");
+const presetMinorCadence = document.getElementById("presetMinorCadence");
+const presetClassicRock = document.getElementById("presetClassicRock");
+const presetAndalusian = document.getElementById("presetAndalusian");
+const presetDorianVamp = document.getElementById("presetDorianVamp");
+const presetRow = document.getElementById("presetRow");
+const presetPrev = document.getElementById("presetPrev");
+const presetNext = document.getElementById("presetNext");
 const editSectionABtn = document.getElementById("editSectionA");
 const addBSectionBtn = document.getElementById("addBSection");
 const editSectionBBtn = document.getElementById("editSectionB");
@@ -192,6 +202,7 @@ const state = {
   hasBSection: false,
   activeSection: "A",
   playingSection: "A",
+  activeDrumSection: "A",
   aRepeats: 2,
   bRepeats: 2,
   playbackSequence: [],
@@ -342,7 +353,7 @@ const B_SECTION_RHYTHM_VARIANTS = {
   sparse: "halves"
 };
 
-const EXTENSION_OPTIONS = ["maj7", "7", "9", "11", "13", "sus4", "add9"];
+const EXTENSION_OPTIONS = ["6", "maj7", "7", "9", "11", "13", "sus4", "add9"];
 
 const SAMPLE_LIBRARY = {
   piano: [
@@ -565,6 +576,10 @@ function init() {
   if (triadSelect) Object.keys(triads).forEach((triad) => addOption(triadSelect, triad));
 
   updateTempo();
+  ensureRepeatOptions(formARepeats, 16);
+  ensureRepeatOptions(formBRepeats, 16);
+  if (formARepeats) formARepeats.value = String(state.aRepeats || 2);
+  if (formBRepeats) formBRepeats.value = String(state.bRepeats || 2);
   buildChordPalette();
   updateScaleNotes();
   if (arpSelect) updateArpNotes();
@@ -758,6 +773,16 @@ function init() {
     if (!rhythmEditor || !rhythmChip) return;
     if (event.target.closest("#rhythmEditor") || event.target.closest("#rhythmChip")) return;
     closeRhythmEditor();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.code !== "Space") return;
+    if (event.repeat) return;
+    const target = event.target;
+    if (target && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(target.tagName))) {
+      return;
+    }
+    event.preventDefault();
+    togglePlayback();
   });
   if (chordPopupClose) chordPopupClose.addEventListener("click", closeChordPopup);
   if (chordPopupApply) chordPopupApply.addEventListener("click", applyPopupChordToken);
@@ -1195,15 +1220,86 @@ function init() {
     });
   }
 
-  if (presetMinorLoop) {
-    presetMinorLoop.addEventListener("click", () => {
+  if (presetIIVIMinor) {
+    presetIIVIMinor.addEventListener("click", () => {
       applyPreset({
-        tokens: ["i", "bVI", "bIII", "bVII"],
+        tokens: ["ii°", "V", "i"],
         beats: 4,
         mode: "minor"
       });
     });
   }
+
+  if (presetAxisInverse) {
+    presetAxisInverse.addEventListener("click", () => {
+      applyPreset({
+        tokens: ["vi", "IV", "I", "V"],
+        beats: 4,
+        mode: "major"
+      });
+    });
+  }
+
+  if (presetPopLift) {
+    presetPopLift.addEventListener("click", () => {
+      applyPreset({
+        tokens: ["I", "V", "ii", "IV"],
+        beats: 4,
+        mode: "major"
+      });
+    });
+  }
+
+  if (presetAeolianRock) {
+    presetAeolianRock.addEventListener("click", () => {
+      applyPreset({
+        tokens: ["i", "bVII", "bVI", "bVII"],
+        beats: 4,
+        mode: "minor"
+      });
+    });
+  }
+
+  if (presetMinorCadence) {
+    presetMinorCadence.addEventListener("click", () => {
+      applyPreset({
+        tokens: ["i", "iv", "V", "i"],
+        beats: 4,
+        mode: "minor"
+      });
+    });
+  }
+
+  if (presetClassicRock) {
+    presetClassicRock.addEventListener("click", () => {
+      applyPreset({
+        tokens: ["I", "bVII", "IV", "I"],
+        beats: 4,
+        mode: "major"
+      });
+    });
+  }
+
+  if (presetAndalusian) {
+    presetAndalusian.addEventListener("click", () => {
+      applyPreset({
+        tokens: ["i", "bVII", "bVI", "V"],
+        beats: 4,
+        mode: "minor"
+      });
+    });
+  }
+
+  if (presetDorianVamp) {
+    presetDorianVamp.addEventListener("click", () => {
+      applyPreset({
+        tokens: ["i", "IV"],
+        beats: 4,
+        mode: "minor"
+      });
+    });
+  }
+  initPresetCarousel();
 
   if (keyLockBtn) {
     keyLockBtn.addEventListener("click", () => {
@@ -1381,6 +1477,16 @@ function init() {
   loadLatencyCompensation();
 }
 
+function ensureRepeatOptions(selectEl, max = 16) {
+  if (!selectEl || selectEl.options.length > 0) return;
+  for (let i = 1; i <= max; i += 1) {
+    const option = document.createElement("option");
+    option.value = String(i);
+    option.textContent = String(i);
+    selectEl.appendChild(option);
+  }
+}
+
 function collapseMobileDetails() {
   if (window.innerWidth > 900) return;
   document.querySelectorAll(".palette-drawer").forEach((details) => {
@@ -1496,7 +1602,7 @@ function updateChordEditor() {
   state.selectedChord = selectedIndex;
   const item = state.progression[selectedIndex];
   const description = describeItem(item);
-  selectedChordLabel.textContent = `${description.name} • ${description.label}`;
+  selectedChordLabel.textContent = `${description.label} • ${description.name}`;
   if (!state.isPlaying) {
     const chord = chordFromItem(item);
     state.currentChordNotes = new Set(chord.intervals.map((interval) => noteAt(chord.root, interval)));
@@ -1807,6 +1913,7 @@ function primePlaybackFromSelectedChord() {
   state.currentChord = startIndex;
   state.uiChord = target.sectionIndex;
   state.playingSection = target.section;
+  state.activeDrumSection = target.section;
   state.selectedChord = target.sectionIndex;
   state.lastVoicing = null;
   state.lastCountBar = null;
@@ -2374,7 +2481,7 @@ function buildExtendedChords() {
   const { degrees, qualities } = MODE_DATA[state.mode];
   degrees.forEach((degree, idx) => {
     const quality = qualities[idx];
-    const exts = quality === "maj" ? ["7", "9"] : ["7", "9"];
+    const exts = quality === "dim" ? ["7", "9"] : ["6", "7", "9"];
     exts.forEach((ext) => {
       const item = createChordItem(degree, 4, null, [ext]);
       const chord = chordFromItem(item);
@@ -2590,6 +2697,7 @@ function parseRomanToken(token) {
   if (extPart.includes("13")) exts.push("13");
   if (extPart.includes("11")) exts.push("11");
   if (extPart.includes("9")) exts.push("9");
+  if (extPart.includes("6") && !extPart.includes("16")) exts.push("6");
   if (extPart.includes("7")) exts.push("7");
   return { token: roman, exts };
 }
@@ -2789,13 +2897,18 @@ function applyExtensions(intervals, quality, exts = []) {
     set.delete(4);
     set.add(5);
   }
+  const hasTertianExt = exts.includes("9") || exts.includes("11") || exts.includes("13");
   const addSeventh = (value) => set.add(value);
   if (exts.includes("maj7")) addSeventh(11);
   if (exts.includes("7")) {
     addSeventh(10);
+  } else if (hasTertianExt && !exts.includes("maj7")) {
+    // Chords labeled 9/11/13 imply a 7th by convention unless explicitly maj7.
+    addSeventh(10);
   }
-  if (exts.includes("9") || exts.includes("add9")) set.add(14);
-  if (exts.includes("11")) set.add(17);
+  if (exts.includes("9") || exts.includes("add9") || exts.includes("11") || exts.includes("13")) set.add(14);
+  if (exts.includes("6")) set.add(9);
+  if (exts.includes("11") || exts.includes("13")) set.add(17);
   if (exts.includes("13")) set.add(21);
   return Array.from(set).sort((a, b) => a - b);
 }
@@ -2805,7 +2918,7 @@ function buildChordName(baseName, exts = []) {
   if (extras.length === 0) return baseName;
   if (extras.length === 1) {
     const ext = extras[0];
-    if (["7", "9", "11", "13"].includes(ext)) return `${baseName}${ext}`;
+    if (["6", "7", "9", "11", "13"].includes(ext)) return `${baseName}${ext}`;
     if (ext === "maj7") return `${baseName}maj7`;
     if (ext === "add9") return `${baseName}add9`;
     if (ext === "sus4") return `${baseName}sus4`;
@@ -3271,14 +3384,6 @@ function schedulePlayback() {
     const chord = chordFromItem(item);
     scheduleChord(item, chord, state.nextTime, entry.sectionIndex, item.beats, entry.section);
     const duration = (60 / state.tempo) * item.beats;
-    if (state.drumsEnabled) {
-      while (state.nextDrumTime < state.audioCtx.currentTime + lookAhead) {
-        const fill = (state.drumBarCount + 1) % 8 === 0;
-        scheduleDrums(state.nextDrumTime, 4, fill, entry.section);
-        state.nextDrumTime += barLength;
-        state.drumBarCount += 1;
-      }
-    }
     const startBar = Math.floor(state.nextTime / barLength);
     const endBar = Math.floor((state.nextTime + duration - 0.001) / barLength);
     for (let barIndex = startBar; barIndex <= endBar; barIndex += 1) {
@@ -3289,6 +3394,18 @@ function schedulePlayback() {
     }
     state.nextTime += duration;
     state.currentChord = (state.currentChord + 1) % sequence.length;
+  }
+
+  // Drum scheduling must run independently from chord scheduling, otherwise
+  // long-duration chords (e.g. 16 beats) only trigger drums for the first bar.
+  if (state.drumsEnabled) {
+    const section = state.activeDrumSection || state.playingSection || state.activeSection || "A";
+    while (state.nextDrumTime < state.audioCtx.currentTime + lookAhead) {
+      const fill = (state.drumBarCount + 1) % 8 === 0;
+      scheduleDrums(state.nextDrumTime, 4, fill, section);
+      state.nextDrumTime += barLength;
+      state.drumBarCount += 1;
+    }
   }
 }
 
@@ -3316,6 +3433,7 @@ function getSplitCompGroups(notes) {
 }
 
 function scheduleChord(item, chord, time, index, beats, section = state.activeSection) {
+  state.activeDrumSection = section;
   const { root, intervals } = chord;
   const baseMidi = noteToMidi(root, 3);
   const baseNotes = intervals.map((interval) => baseMidi + interval);
@@ -3500,20 +3618,29 @@ function getVoiceLedNotes(baseNotes, chord, baseMidi) {
 
 function getChordRhythm(beats, section = "A") {
   const rhythmName = getRhythmNameForSection(section);
-  const base = (RHYTHMS[rhythmName] || RHYTHMS.whole).filter((step) => step < beats);
+  const pattern = RHYTHMS[rhythmName] || RHYTHMS.whole;
+  const base = [];
+  // Rhythm patterns are defined over one 4/4 bar, so repeat them for longer chords.
+  for (let barStart = 0; barStart < beats; barStart += 4) {
+    pattern.forEach((step) => {
+      const hit = barStart + step;
+      if (hit < beats) base.push(hit);
+    });
+  }
+  if (rhythmName === "whole") return base;
   if (base.length <= 1) return base;
-  const pattern = base.slice();
+  const varied = base.slice();
   if (Math.random() < 0.35) {
-    const dropIndex = Math.floor(Math.random() * (pattern.length - 1)) + 1;
-    pattern.splice(dropIndex, 1);
+    const dropIndex = Math.floor(Math.random() * (varied.length - 1)) + 1;
+    varied.splice(dropIndex, 1);
   }
   if (Math.random() < 0.25) {
-    const target = pattern[Math.floor(Math.random() * pattern.length)];
+    const target = varied[Math.floor(Math.random() * varied.length)];
     const extra = target + 0.25;
-    if (extra < beats && !pattern.includes(extra)) pattern.push(extra);
+    if (extra < beats && !varied.includes(extra)) varied.push(extra);
   }
-  pattern.sort((a, b) => a - b);
-  return pattern;
+  varied.sort((a, b) => a - b);
+  return varied;
 }
 
 function scheduleBass(root, time, beats = 4) {
@@ -4460,6 +4587,25 @@ function loadSavedProgressions() {
 }
 
 function refreshSavedProgressions() {}
+
+function initPresetCarousel() {
+  if (!presetRow || !presetPrev || !presetNext) return;
+  const updateNavState = () => {
+    const max = Math.max(0, presetRow.scrollWidth - presetRow.clientWidth);
+    presetPrev.disabled = presetRow.scrollLeft <= 2;
+    presetNext.disabled = presetRow.scrollLeft >= max - 2;
+  };
+  const pageWidth = () => Math.max(180, Math.floor(presetRow.clientWidth * 0.9));
+  presetPrev.addEventListener("click", () => {
+    presetRow.scrollBy({ left: -pageWidth(), behavior: "smooth" });
+  });
+  presetNext.addEventListener("click", () => {
+    presetRow.scrollBy({ left: pageWidth(), behavior: "smooth" });
+  });
+  presetRow.addEventListener("scroll", updateNavState, { passive: true });
+  window.addEventListener("resize", updateNavState);
+  setTimeout(updateNavState, 0);
+}
 
 function applyPreset({ tokens, beats = 4, mode = "major", exts = [] }) {
   if (!state.keyLocked) {
