@@ -636,20 +636,21 @@ function init() {
     addBSectionBtn.addEventListener("click", () => {
       syncActiveSectionFromProgression();
       generateBSectionFromCorpus();
+      state.playbackSequence = buildPlaybackSequence();
       switchActiveSection("B");
     });
   }
   if (aRepeatsSelect) {
     aRepeatsSelect.addEventListener("change", () => {
       state.aRepeats = Math.max(1, parseInt(aRepeatsSelect.value, 10) || 2);
-      if (!state.isPlaying) state.playbackSequence = buildPlaybackSequence();
+      state.playbackSequence = buildPlaybackSequence();
       updateSectionControls();
     });
   }
   if (bRepeatsSelect) {
     bRepeatsSelect.addEventListener("change", () => {
       state.bRepeats = Math.max(1, parseInt(bRepeatsSelect.value, 10) || 2);
-      if (!state.isPlaying) state.playbackSequence = buildPlaybackSequence();
+      state.playbackSequence = buildPlaybackSequence();
       updateSectionControls();
     });
   }
@@ -664,7 +665,7 @@ function init() {
     formARepeats.addEventListener("change", () => {
       state.aRepeats = Math.max(1, parseInt(formARepeats.value, 10) || 2);
       if (aRepeatsSelect) aRepeatsSelect.value = String(state.aRepeats);
-      if (!state.isPlaying) state.playbackSequence = buildPlaybackSequence();
+      state.playbackSequence = buildPlaybackSequence();
       updateSectionControls();
     });
   }
@@ -672,7 +673,7 @@ function init() {
     formBRepeats.addEventListener("change", () => {
       state.bRepeats = Math.max(1, parseInt(formBRepeats.value, 10) || 2);
       if (bRepeatsSelect) bRepeatsSelect.value = String(state.bRepeats);
-      if (!state.isPlaying) state.playbackSequence = buildPlaybackSequence();
+      state.playbackSequence = buildPlaybackSequence();
       updateSectionControls();
     });
   }
@@ -691,7 +692,7 @@ function init() {
           state.progression = getSectionProgression("A");
         }
       }
-      if (!state.isPlaying) state.playbackSequence = buildPlaybackSequence();
+      state.playbackSequence = buildPlaybackSequence();
       updateSectionControls();
       renderProgression();
     });
@@ -1839,17 +1840,16 @@ function rewindToStart() {
   renderProgression();
   updateRhythmReadout("A");
 
-  if (!state.isPlaying) return;
-  if (state.pauseStartTime) {
-    state.pausedTotalMs += Date.now() - state.pauseStartTime;
-    state.pauseStartTime = null;
+  if (!state.isPlaying) {
+    updatePlayButton();
+    return;
   }
-  state.isPaused = false;
+  if (!state.isPaused) pausePlayback();
   resetTransportTimeline();
   primePlaybackFromSelectedChord();
   state.lastAutoScrollSection = null;
   scrollToSectionOnMobile("A", true);
-  beginCountIn();
+  updatePlayButton();
 }
 
 function getSelectedChordElement() {
@@ -2070,6 +2070,25 @@ function getBorrowedPool(mode) {
     return ["bVII", "bVI", "iv", "bIII", "bII"];
   }
   return ["V", "bII", "bVI", "bVII"];
+}
+
+function suggestNextTokenFromCorpus(previousToken, mode = state.mode) {
+  const corpus = SONG_CORPUS[mode] || SONG_CORPUS.major;
+  const tonic = mode === "major" ? "I" : "i";
+  const prev = previousToken && romanToDegree(previousToken) ? previousToken : tonic;
+  const transitions = buildTransitionMap(mode);
+  const options = transitions[prev] || [];
+  if (options.length > 0) {
+    const pick = weightedPick(options, (option) => option.weight || 1);
+    if (pick?.token) return pick.token;
+  }
+  const seed = weightedPick(corpus, (entry) => entry.weight || 1);
+  if (seed?.tokens?.length) {
+    const idx = seed.tokens.lastIndexOf(prev);
+    if (idx >= 0 && idx < seed.tokens.length - 1) return seed.tokens[idx + 1];
+    return seed.tokens[0];
+  }
+  return tonic;
 }
 
 function chooseMusicalProgression(length, mode, spice) {
@@ -2322,6 +2341,7 @@ function renderProgression() {
   const renderSection = (container, section, items) => {
     if (!container) return;
     container.innerHTML = "";
+    let lastChordEl = null;
     items.forEach((item, idx) => {
       const itemEl = document.createElement("div");
       const description = describeItem(item);
@@ -2359,7 +2379,43 @@ function renderProgression() {
       itemEl.addEventListener("dragover", handleDragOver);
       itemEl.addEventListener("drop", handleDrop);
       container.appendChild(itemEl);
+      lastChordEl = itemEl;
     });
+
+    const addChord = () => {
+      switchActiveSection(section);
+      const last = state.progression[state.progression.length - 1];
+      const token = suggestNextTokenFromCorpus(last?.token, state.mode);
+      const beats = typeof last?.beats === "number" ? last.beats : 4;
+      state.progression.push(createChordItem(token, beats));
+      state.selectedChord = state.progression.length - 1;
+      state.selectionDirtyForPlayback = true;
+      updateChordEditor();
+      renderProgression();
+    };
+
+    if (lastChordEl) {
+      const inlineAddBtn = document.createElement("button");
+      inlineAddBtn.className = "progression-inline-add";
+      inlineAddBtn.type = "button";
+      inlineAddBtn.dataset.section = section;
+      inlineAddBtn.setAttribute("aria-label", `Add chord to ${section} section`);
+      inlineAddBtn.textContent = "+";
+      inlineAddBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        addChord();
+      });
+      lastChordEl.appendChild(inlineAddBtn);
+    } else {
+      const emptyAddBtn = document.createElement("button");
+      emptyAddBtn.className = "progression-add";
+      emptyAddBtn.type = "button";
+      emptyAddBtn.dataset.section = section;
+      emptyAddBtn.setAttribute("aria-label", `Add chord to ${section} section`);
+      emptyAddBtn.innerHTML = "<span>+</span>";
+      emptyAddBtn.addEventListener("click", addChord);
+      container.appendChild(emptyAddBtn);
+    }
   };
 
   renderSection(progressionAEl, "A", sectionA);
