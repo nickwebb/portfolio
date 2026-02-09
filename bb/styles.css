@@ -387,6 +387,15 @@ body {
   align-items: center;
 }
 
+.left-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .key-row .transport-mini {
   margin-left: auto;
 }
@@ -630,6 +639,48 @@ body {
   box-sizing: border-box;
   overflow: visible;
   word-break: break-word;
+}
+
+@media (min-width: 901px) and (max-width: 1200px) {
+  .key-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 8px;
+  }
+
+  .left-controls {
+    min-width: 0;
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  .left-controls .tempo-pill {
+    flex: 1 1 auto;
+    min-width: 250px;
+  }
+
+  .key-row .transport-mini {
+    margin-left: 0;
+    justify-self: end;
+    white-space: nowrap;
+  }
+
+  .key-row .key-banner,
+  .key-row .key-lock {
+    margin-bottom: 0;
+  }
+
+  .key-row .transport-mini .btn.primary.play {
+    padding: 11px 18px;
+    font-size: 0.94rem;
+  }
+
+  .key-row .transport-mini .btn.ghost {
+    padding: 10px 12px;
+    font-size: 0.88rem;
+  }
 }
 
 @media (max-width: 900px) {
@@ -2017,6 +2068,15 @@ input[type="text"] {
     align-items: center;
     gap: 10px;
     padding-right: 0;
+  }
+
+  .progression-block .key-row .left-controls {
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
   }
 
   .key-pill-wrap {
