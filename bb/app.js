@@ -289,8 +289,8 @@ const state = {
   pianoLevel: 0.55,
   guitarLevel: 0.17,
   realisticGuitar: true,
-  drumLevel: 0.55,
-  bassLevel: 0.45,
+  drumLevel: 0.6,
+  bassLevel: 0.62,
   bassOffsetMs: -6,
   drumPattern: null,
   drumSampleBuffers: {},
@@ -1049,8 +1049,8 @@ function init() {
         trim: 280,
         pianoLevel: 0.55,
         guitarLevel: 0.3,
-        drumLevel: 0.55,
-        bassLevel: 0.45,
+        drumLevel: 0.6,
+        bassLevel: 0.62,
         bassOffset: -6
       };
       if (toneSlider) toneSlider.value = defaults.tone;
