@@ -426,7 +426,7 @@
             </label>
             <label>
               Bass Level
-              <input id="bassLevel" type="range" min="0" max="100" step="1" value="35" />
+              <input id="bassLevel" type="range" min="0" max="100" step="1" value="45" />
             </label>
             <label>
               Bass Timing
@@ -471,12 +471,23 @@
           <div class="fretboard-head">
             <label class="toggle compact">
               Show fretboard
-              <input id="fretToggle" type="checkbox" checked />
+              <input id="fretToggle" type="checkbox" />
+            </label>
+            <label class="toggle compact">
+              Show scale only
+              <input id="scaleOnlyToggle" type="checkbox" />
+            </label>
+            <label class="toggle compact">
+              Show keyboard
+              <input id="keyboardToggle" type="checkbox" />
             </label>
           </div>
           <div class="fretboard-wrapper">
             <div id="fretboardMarkers" class="fretboard-markers"></div>
             <div id="fretboardGrid" class="fretboard"></div>
+          </div>
+          <div id="keyboardWrap" class="keyboard-wrapper hidden">
+            <div id="keyboardGrid" class="keyboard-grid"></div>
           </div>
         </div>
       </div>

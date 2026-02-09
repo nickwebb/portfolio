@@ -92,8 +92,12 @@ const triadNotes = document.getElementById("triadNotes");
 const highlightSelect = document.getElementById("highlightSelect");
 const positionSelect = document.getElementById("positionSelect");
 const fretToggle = document.getElementById("fretToggle");
+const scaleOnlyToggle = document.getElementById("scaleOnlyToggle");
+const keyboardToggle = document.getElementById("keyboardToggle");
 const fretboardMarkers = document.getElementById("fretboardMarkers");
 const fretboardGrid = document.getElementById("fretboardGrid");
+const keyboardWrap = document.getElementById("keyboardWrap");
+const keyboardGrid = document.getElementById("keyboardGrid");
 
 const nowChord = document.getElementById("nowChord");
 const nowDetails = document.getElementById("nowDetails");
@@ -175,8 +179,33 @@ function setFretboardVisibility(show) {
   if (fretboardMarkers) fretboardMarkers.classList.toggle("hidden", !show);
 }
 
+function setKeyboardVisibility(show) {
+  if (keyboardWrap) keyboardWrap.classList.toggle("hidden", !show);
+}
+
+function loadUiPrefs() {
+  try {
+    return JSON.parse(localStorage.getItem(UI_PREFS_KEY) || "{}");
+  } catch (error) {
+    return {};
+  }
+}
+
+function saveUiPrefs(partial = {}) {
+  const existing = loadUiPrefs();
+  const next = { ...existing, ...partial };
+  localStorage.setItem(UI_PREFS_KEY, JSON.stringify(next));
+}
+
 function normalizeKeyDisplay(note) {
   return ENHARMONIC_DISPLAY_MAP[note] || note;
+}
+
+function displayNoteForKey(note, key = state.key) {
+  const normalized = FLAT_EQUIV[note] || note;
+  const idx = NOTES.indexOf(normalized);
+  if (idx < 0) return normalizeKeyDisplay(note);
+  return shouldPreferFlats(key) ? FLAT_NOTES[idx] : NOTES[idx];
 }
 
 function getRandomKeyName() {
@@ -261,7 +290,7 @@ const state = {
   guitarLevel: 0.17,
   realisticGuitar: true,
   drumLevel: 0.55,
-  bassLevel: 0.35,
+  bassLevel: 0.45,
   bassOffsetMs: -6,
   drumPattern: null,
   drumSampleBuffers: {},
@@ -589,20 +618,12 @@ function init() {
   setStyle(state.style);
   updateSpicySuggestion();
   updateKeyBanner();
-  let hasFretboardPref = false;
-  try {
-    const prefs = JSON.parse(localStorage.getItem(UI_PREFS_KEY) || "{}");
-    if (typeof prefs.showFretboard === "boolean" && fretToggle) {
-      fretToggle.checked = prefs.showFretboard;
-      hasFretboardPref = true;
-    }
-  } catch (error) {
-    // ignore malformed UI prefs
-  }
-  if (!hasFretboardPref && window.innerWidth <= 900 && fretToggle) {
-    fretToggle.checked = false;
-  }
+  const prefs = loadUiPrefs();
+  if (fretToggle) fretToggle.checked = !!prefs.showFretboard;
+  if (scaleOnlyToggle) scaleOnlyToggle.checked = !!prefs.showScaleOnly;
+  if (keyboardToggle) keyboardToggle.checked = !!prefs.showKeyboard;
   setFretboardVisibility(!!fretToggle?.checked);
+  setKeyboardVisibility(!!keyboardToggle?.checked);
   initProgressionLibrary();
   buildFretMarkers();
   updateChordEditor();
@@ -1029,7 +1050,7 @@ function init() {
         pianoLevel: 0.55,
         guitarLevel: 0.3,
         drumLevel: 0.55,
-        bassLevel: 0.35,
+        bassLevel: 0.45,
         bassOffset: -6
       };
       if (toneSlider) toneSlider.value = defaults.tone;
@@ -1344,14 +1365,25 @@ function init() {
 
   if (highlightSelect) highlightSelect.addEventListener("change", buildFretboard);
   if (positionSelect) positionSelect.addEventListener("change", buildFretboard);
-  fretToggle.addEventListener("change", () => {
-    setFretboardVisibility(fretToggle.checked);
-    try {
-      localStorage.setItem(UI_PREFS_KEY, JSON.stringify({ showFretboard: fretToggle.checked }));
-    } catch (error) {
-      // best effort only
-    }
-  });
+  if (fretToggle) {
+    fretToggle.addEventListener("change", () => {
+      setFretboardVisibility(fretToggle.checked);
+      saveUiPrefs({ showFretboard: fretToggle.checked });
+    });
+  }
+  if (scaleOnlyToggle) {
+    scaleOnlyToggle.addEventListener("change", () => {
+      buildFretboard();
+      saveUiPrefs({ showScaleOnly: scaleOnlyToggle.checked });
+    });
+  }
+  if (keyboardToggle) {
+    keyboardToggle.addEventListener("change", () => {
+      setKeyboardVisibility(keyboardToggle.checked);
+      buildFretboard();
+      saveUiPrefs({ showKeyboard: keyboardToggle.checked });
+    });
+  }
 
   if (focusChord) {
     focusChord.addEventListener("click", () => {
@@ -4632,6 +4664,7 @@ function renderNoteList(container, notes) {
 }
 
 function buildFretboard() {
+  if (!fretboardGrid) return;
   fretboardGrid.innerHTML = "";
   const strings = ["E", "B", "G", "D", "A", "E"];
   const frets = 12;
@@ -4644,7 +4677,7 @@ function buildFretboard() {
       const normalized = FLAT_EQUIV[note] || note;
       const cell = document.createElement("div");
       cell.className = "fret";
-      cell.textContent = note;
+      cell.textContent = displayNoteForKey(note, state.key);
       if (highlightSet.has(normalized)) cell.classList.add("active");
       if (overlaySet.has(normalized)) cell.classList.add("overlay");
       if (state.currentChordRoot) {
@@ -4654,19 +4687,74 @@ function buildFretboard() {
       fretboardGrid.appendChild(cell);
     }
   });
+  buildKeyboardMap();
 }
 
 function getHighlightNotes() {
   const chordSet = state.currentChordNotes.size > 0 ? state.currentChordNotes : new Set();
   const normalize = (note) => FLAT_EQUIV[note] || note;
   const normalizedChord = new Set(Array.from(chordSet).map(normalize));
+  const scaleOnly = !!scaleOnlyToggle?.checked;
+  const modeScale = state.mode === "minor" ? MINOR_SCALE : MAJOR_SCALE;
+  const scaleIntervals = scaleOnly ? modeScale : (scales[scaleSelect?.value] || MAJOR_SCALE);
+  const scaleSet = new Set(scaleIntervals.map((interval) => normalize(noteAt(state.key, interval))));
+  if (scaleOnly) {
+    return { highlightSet: scaleSet, overlaySet: new Set(), scaleOnly: true };
+  }
   if (state.fretMode === "scale") {
-    if (!scaleSelect) return { highlightSet: chordSet, overlaySet: new Set() };
+    if (!scaleSelect) return { highlightSet: normalizedChord, overlaySet: new Set(), scaleOnly: false };
     const intervals = scales[scaleSelect.value];
     const overlaySet = new Set(intervals.map((interval) => normalize(noteAt(state.key, interval))));
-    return { highlightSet: normalizedChord, overlaySet };
+    return { highlightSet: normalizedChord, overlaySet, scaleOnly: false };
   }
-  return { highlightSet: normalizedChord, overlaySet: new Set() };
+  return { highlightSet: normalizedChord, overlaySet: new Set(), scaleOnly: false };
+}
+
+function buildKeyboardMap() {
+  if (!keyboardGrid) return;
+  keyboardGrid.innerHTML = "";
+  const totalSemitones = 24; // Two octaves: C to B
+  const whiteCount = 14;
+  const whiteWidth = 100 / whiteCount;
+  const blackSemitones = new Set([1, 3, 6, 8, 10]);
+  const { highlightSet, overlaySet } = getHighlightNotes();
+  const keys = [];
+  let whiteIndex = 0;
+
+  for (let semitoneOffset = 0; semitoneOffset < totalSemitones; semitoneOffset += 1) {
+    const note = noteAt("C", semitoneOffset);
+    const normalized = FLAT_EQUIV[note] || note;
+    const semitoneInOctave = semitoneOffset % 12;
+    const isBlack = blackSemitones.has(semitoneInOctave);
+    let left = 0;
+    let width = whiteWidth;
+    if (isBlack) {
+      width = whiteWidth * 0.64;
+      left = whiteIndex * whiteWidth - width * 0.5;
+      if (left < 0) left = 0;
+      if (left + width > 100) left = 100 - width;
+    } else {
+      left = whiteIndex * whiteWidth;
+      whiteIndex += 1;
+    }
+    keys.push({ note, normalized, isBlack, left, width });
+  }
+
+  const rootNorm = state.currentChordRoot ? (FLAT_EQUIV[state.currentChordRoot] || state.currentChordRoot) : null;
+  keys
+    .sort((a, b) => Number(a.isBlack) - Number(b.isBlack))
+    .forEach((entry) => {
+      const key = document.createElement("div");
+      key.className = `keyboard-key ${entry.isBlack ? "black" : "white"}`;
+      key.style.left = `${entry.left}%`;
+      key.style.width = `${entry.width}%`;
+      if (entry.isBlack) key.textContent = "";
+      else key.textContent = displayNoteForKey(entry.note, state.key);
+      if (highlightSet.has(entry.normalized)) key.classList.add("active");
+      if (overlaySet.has(entry.normalized)) key.classList.add("overlay");
+      if (rootNorm && entry.normalized === rootNorm) key.classList.add("root");
+      keyboardGrid.appendChild(key);
+    });
 }
 
 function startSession() {
