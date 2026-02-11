@@ -178,7 +178,6 @@ const extendedChords = document.getElementById("extendedChords");
 const borrowedChords = document.getElementById("borrowedChords");
 
 const selectedChordLabel = document.getElementById("selectedChordLabel");
-const extensionButtons = document.getElementById("extensionButtons");
 const beatButtons = document.getElementById("beatButtons");
 const chordEditor = document.querySelector(".chord-editor");
 const chordPopup = document.getElementById("chordPopup");
@@ -188,7 +187,6 @@ const chordPopupApply = document.getElementById("chordPopupApply");
 const chordPopupDelete = document.getElementById("chordPopupDelete");
 const chordPopupClose = document.getElementById("chordPopupClose");
 const chordPopupBeats = document.getElementById("chordPopupBeats");
-const chordPopupExts = document.getElementById("chordPopupExts");
 // chord slots are added by dragging chords into the progression
 const footerMinutes = document.getElementById("footerMinutes");
 const resetMinutes = document.getElementById("resetMinutes");
@@ -327,6 +325,9 @@ const state = {
   timerId: null,
   drumBarCount: 0,
   lastCountBar: null,
+  beatCounterRaf: null,
+  beatCounterStartTime: null,
+  beatCounterLastStep: -1,
   lastVoicing: null,
   editorPinned: false,
   sessionTimerId: null,
@@ -352,7 +353,7 @@ const state = {
   guitarLevel: 0.17,
   realisticGuitar: true,
   drumLevel: 0.6,
-  bassLevel: 0.62,
+  bassLevel: 1,
   bassOffsetMs: -6,
   drumPattern: null,
   drumSampleBuffers: {},
@@ -377,10 +378,99 @@ const state = {
 };
 
 const SAVED_PROG_KEY = "gpl_saved_progressions";
+const LAST_SESSION_KEY = "bb_last_session";
 const LATENCY_COMP_KEY = "gpl_latency_comp";
 const DEBUG_AUDIO = true;
 const LOG_SAMPLE_MISS = true;
 let isMobileLayout = window.innerWidth <= 900;
+let sessionSaveTimer = null;
+
+function scheduleSessionSave() {
+  if (sessionSaveTimer) clearTimeout(sessionSaveTimer);
+  sessionSaveTimer = setTimeout(saveLastSession, 120);
+}
+
+function serializeProgression(list = []) {
+  return normalizeProgression(list).map((item) => ({
+    token: item.token,
+    beats: item.beats,
+    roman: item.roman || null,
+    exts: Array.isArray(item.exts) ? item.exts.slice() : []
+  }));
+}
+
+function saveLastSession() {
+  try {
+    const payload = {
+      version: 1,
+      key: state.key,
+      mode: state.mode,
+      tempo: state.tempo,
+      style: state.style,
+      texture: state.texture,
+      rhythm: state.rhythm,
+      drumStyle: state.drumStyle,
+      bassRhythm: state.bassRhythm,
+      keyLocked: !!state.keyLocked,
+      aRepeats: state.aRepeats,
+      bRepeats: state.bRepeats,
+      hasBSection: !!state.hasBSection,
+      activeSection: state.activeSection,
+      selectedChord: state.selectedChord,
+      sectionA: serializeProgression(state.sectionA),
+      sectionB: serializeProgression(state.sectionB),
+      progression: serializeProgression(state.progression)
+    };
+    localStorage.setItem(LAST_SESSION_KEY, JSON.stringify(payload));
+  } catch (error) {
+    // best-effort persistence
+  }
+}
+
+function restoreLastSession() {
+  try {
+    const raw = localStorage.getItem(LAST_SESSION_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (!data || typeof data !== "object") return false;
+
+    state.key = normalizeKeyDisplay(data.key || state.key);
+    state.mode = normalizeMode(data.mode || state.mode);
+    state.tempo = Number.isFinite(data.tempo) ? Math.max(50, Math.min(200, Math.round(data.tempo))) : state.tempo;
+    state.style = data.style || state.style;
+    state.texture = data.texture || state.texture;
+    state.rhythm = data.rhythm || state.rhythm;
+    state.drumStyle = data.drumStyle || state.drumStyle;
+    state.bassRhythm = data.bassRhythm || state.bassRhythm;
+    state.keyLocked = !!data.keyLocked;
+    state.aRepeats = Math.max(1, Math.min(16, Number(data.aRepeats) || state.aRepeats || 2));
+    state.bRepeats = Math.max(1, Math.min(16, Number(data.bRepeats) || state.bRepeats || 2));
+    state.hasBSection = !!data.hasBSection;
+    state.activeSection = data.activeSection === "B" ? "B" : "A";
+    state.selectedChord = Math.max(0, Number(data.selectedChord) || 0);
+
+    const sectionA = normalizeProgression(data.sectionA || data.progression || []);
+    const sectionB = normalizeProgression(data.sectionB || []);
+    if (!sectionA.length) return false;
+
+    state.sectionA = sectionA;
+    state.sectionB = state.hasBSection ? sectionB : [];
+    if (state.activeSection === "B" && !state.sectionB.length) state.activeSection = "A";
+    state.progression = state.activeSection === "B" ? getSectionProgression("B") : getSectionProgression("A");
+
+    if (keySelect) keySelect.value = FLAT_EQUIV[state.key] || state.key;
+    if (modeSelect) modeSelect.value = state.mode;
+    if (tempoSlider) tempoSlider.value = String(state.tempo);
+    if (styleSelect) styleSelect.value = state.style;
+    if (textureSelect) textureSelect.value = state.texture;
+    if (rhythmSelect) rhythmSelect.value = state.rhythm;
+    if (drumStyleSelect) drumStyleSelect.value = state.drumStyle;
+    if (bassRhythmSelect) bassRhythmSelect.value = state.bassRhythm;
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
 
 const scales = {
   "Major": MAJOR_SCALE,
@@ -444,6 +534,20 @@ const B_SECTION_RHYTHM_VARIANTS = {
   habanera: "tresillo",
   clave: "habanera",
   sparse: "halves"
+};
+
+const STYLE_SWING_BEATS = {
+  clean: 0.018,
+  neosoul: 0.045,
+  jazz: 0.055,
+  cinematic: 0.01
+};
+
+const STYLE_GROOVE_MS = {
+  clean: { piano: 4, bass: 2, hats: 0 },
+  neosoul: { piano: 10, bass: 8, hats: 4 },
+  jazz: { piano: 6, bass: 10, hats: 6 },
+  cinematic: { piano: 14, bass: 6, hats: 2 }
 };
 
 const EXTENSION_OPTIONS = ["6", "maj7", "7", "9", "11", "13", "sus4", "add9"];
@@ -660,6 +764,10 @@ const DRUM_SOUNDS = {
 };
 
 function init() {
+  // Back-compat: remove stale cached controls from older markup versions.
+  const staleCopyBtn = document.getElementById("copyProgression");
+  if (staleCopyBtn && staleCopyBtn.parentNode) staleCopyBtn.parentNode.removeChild(staleCopyBtn);
+
   state.sampleInstrument = "piano";
   state.drumStyle = "pop";
   NOTES.forEach((note) => {
@@ -712,6 +820,7 @@ function init() {
     buildFretboard();
     updateSpicySuggestion();
     updateKeyBanner();
+    scheduleSessionSave();
   });
 
   modeSelect.addEventListener("change", () => {
@@ -729,6 +838,7 @@ function init() {
     buildFretboard();
     updateSpicySuggestion();
     updateKeyBanner();
+    scheduleSessionSave();
   });
 
   tempoSlider.addEventListener("input", updateTempo);
@@ -797,10 +907,7 @@ function init() {
   }
   if (addBSectionBtn) {
     addBSectionBtn.addEventListener("click", () => {
-      syncActiveSectionFromProgression();
-      generateBSectionFromCorpus();
-      state.playbackSequence = buildPlaybackSequence();
-      switchActiveSection("B");
+      addOrFocusBSection({ regenerate: true });
     });
   }
   if (aRepeatsSelect) {
@@ -808,6 +915,7 @@ function init() {
       state.aRepeats = Math.max(1, parseInt(aRepeatsSelect.value, 10) || 2);
       state.playbackSequence = buildPlaybackSequence();
       updateSectionControls();
+      scheduleSessionSave();
     });
   }
   if (bRepeatsSelect) {
@@ -815,6 +923,7 @@ function init() {
       state.bRepeats = Math.max(1, parseInt(bRepeatsSelect.value, 10) || 2);
       state.playbackSequence = buildPlaybackSequence();
       updateSectionControls();
+      scheduleSessionSave();
     });
   }
   if (formChip) {
@@ -830,6 +939,7 @@ function init() {
       if (aRepeatsSelect) aRepeatsSelect.value = String(state.aRepeats);
       state.playbackSequence = buildPlaybackSequence();
       updateSectionControls();
+      scheduleSessionSave();
     });
   }
   if (formBRepeats) {
@@ -838,6 +948,7 @@ function init() {
       if (bRepeatsSelect) bRepeatsSelect.value = String(state.bRepeats);
       state.playbackSequence = buildPlaybackSequence();
       updateSectionControls();
+      scheduleSessionSave();
     });
   }
   if (formHasB) {
@@ -848,16 +959,13 @@ function init() {
           generateBSectionFromCorpus();
         }
       } else {
-        state.sectionB = [];
-        state.hasBSection = false;
-        if (state.activeSection === "B") {
-          state.activeSection = "A";
-          state.progression = getSectionProgression("A");
-        }
+        removeBSection();
+        return;
       }
       state.playbackSequence = buildPlaybackSequence();
       updateSectionControls();
       renderProgression();
+      scheduleSessionSave();
     });
   }
   document.addEventListener("click", (event) => {
@@ -880,16 +988,50 @@ function init() {
     event.preventDefault();
     togglePlayback();
   });
+  document.addEventListener("keydown", (event) => {
+    if (event.repeat) return;
+    const target = event.target;
+    if (target && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(target.tagName))) {
+      return;
+    }
+    if (event.code === "KeyR") {
+      event.preventDefault();
+      refreshProgression();
+      return;
+    }
+    if (event.code === "KeyM") {
+      event.preventDefault();
+      downloadMidi();
+      return;
+    }
+    if (event.code === "KeyB") {
+      event.preventDefault();
+      toggleBSectionShortcut();
+      return;
+    }
+  });
   if (chordPopupClose) chordPopupClose.addEventListener("click", closeChordPopup);
-  if (chordPopupApply) chordPopupApply.addEventListener("click", applyPopupChordToken);
+  if (chordPopupApply) {
+    chordPopupApply.addEventListener("click", () => {
+      const applied = applyPopupChordToken();
+      if (applied) closeChordPopup();
+    });
+  }
   if (chordPopupToken) {
     chordPopupToken.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         event.preventDefault();
-        applyPopupChordToken();
+        const applied = applyPopupChordToken();
+        if (applied) closeChordPopup();
       }
     });
   }
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    closeChordPopup();
+    closeFormEditor();
+    closeRhythmEditor();
+  });
   if (chordPopupDelete) {
     chordPopupDelete.addEventListener("click", () => {
       if (!state.progression.length) return;
@@ -1125,7 +1267,7 @@ function init() {
         pianoLevel: 0.55,
         guitarLevel: 0.3,
         drumLevel: 0.6,
-        bassLevel: 0.62,
+        bassLevel: 1,
         bassOffset: -6
       };
       if (toneSlider) toneSlider.value = defaults.tone;
@@ -1226,10 +1368,7 @@ function init() {
     loadProgressionBtn.addEventListener("click", () => {
       const saved = loadSavedProgressions();
       const names = Object.keys(saved);
-      if (!names.length) {
-        window.alert("No saved progressions yet.");
-        return;
-      }
+      if (!names.length) return;
       const choice = window.prompt(`Load which progression?\n${names.join(", ")}`);
       if (!choice || !saved[choice]) return;
       const data = saved[choice];
@@ -1256,10 +1395,7 @@ function init() {
     deleteProgressionBtn.addEventListener("click", () => {
       const saved = loadSavedProgressions();
       const names = Object.keys(saved);
-      if (!names.length) {
-        window.alert("No saved progressions to delete.");
-        return;
-      }
+      if (!names.length) return;
       const choice = window.prompt(`Delete which progression?\n${names.join(", ")}`);
       if (!choice || !saved[choice]) return;
       delete saved[choice];
@@ -1401,6 +1537,7 @@ function init() {
     keyLockBtn.addEventListener("click", () => {
       state.keyLocked = !state.keyLocked;
       updateKeyLockButton();
+      scheduleSessionSave();
     });
   }
 
@@ -1485,8 +1622,7 @@ function init() {
   if (generateProg) generateProg.addEventListener("click", generateProgression);
   if (autoAlignSamplesBtn) {
     autoAlignSamplesBtn.addEventListener("click", async () => {
-      const ok = await autoAlignSamples(false);
-      if (!ok) window.alert("Samples not loaded yet. Click Play once to load them, then try again.");
+      await autoAlignSamples(false);
     });
   }
 
@@ -1514,8 +1650,6 @@ function init() {
 
   if (resetMinutes) {
     resetMinutes.addEventListener("click", () => {
-      const confirmed = window.confirm("Are you sure you want to reset your total practice minutes?");
-      if (!confirmed) return;
       const data = JSON.parse(localStorage.getItem("fretflow_progress") || "{}");
       const updated = { ...data, totalMinutes: 0 };
       localStorage.setItem("fretflow_progress", JSON.stringify(updated));
@@ -1577,6 +1711,7 @@ function init() {
 
   refreshSavedProgressions();
   if (chordEditor) chordEditor.classList.add("hidden");
+  renderProgression();
   updateKeyBanner();
   if (tempoSlider) updateTempo();
   collapseMobileDetails();
@@ -1692,11 +1827,10 @@ function applyInstrumentDefaults(randomize = false) {
 }
 
 function updateChordEditor() {
-  if (!selectedChordLabel || !extensionButtons || !beatButtons) return;
+  if (!selectedChordLabel || !beatButtons) return;
   state.progression = normalizeProgression(state.progression);
   if (!state.progression.length) {
     selectedChordLabel.textContent = "Select a chord";
-    extensionButtons.innerHTML = "";
     beatButtons.innerHTML = "";
     if (chordEditor) chordEditor.classList.add("hidden");
     return;
@@ -1716,37 +1850,6 @@ function updateChordEditor() {
     state.currentChordRoot = chord.root;
     buildFretboard();
   }
-
-  extensionButtons.innerHTML = "";
-  EXTENSION_OPTIONS.forEach((ext) => {
-    const btn = document.createElement("button");
-    btn.className = "btn ghost small";
-    btn.textContent = ext;
-    if (item.exts.includes(ext)) btn.classList.add("active");
-    btn.addEventListener("click", () => {
-      const current = state.progression[state.selectedChord];
-      if (!current) return;
-      const nextExts = Array.isArray(current.exts) ? current.exts.slice() : [];
-      if (item.exts.includes(ext)) {
-        current.exts = nextExts.filter((value) => value !== ext);
-      } else {
-        nextExts.push(ext);
-        current.exts = nextExts;
-      }
-      if (state.activeSection === "B") state.sectionB = normalizeProgression(state.progression);
-      else state.sectionA = normalizeProgression(state.progression);
-      state.playbackSequence = buildPlaybackSequence();
-      if (!state.isPlaying) {
-        const chord = chordFromItem(current);
-        state.currentChordNotes = new Set(chord.intervals.map((interval) => noteAt(chord.root, interval)));
-        state.currentChordRoot = chord.root;
-      }
-      buildFretboard();
-      renderProgression();
-      updateChordEditor();
-    });
-    extensionButtons.appendChild(btn);
-  });
 
   beatButtons.innerHTML = "";
   [1, 2, 3, 4, 6, 8, 16].forEach((beat) => {
@@ -1772,6 +1875,7 @@ function updateTempo() {
   state.tempo = parseInt(tempoSlider.value, 10);
   tempoLabel.textContent = `${state.tempo} bpm`;
   if (tempoLabelMobile) tempoLabelMobile.textContent = `${state.tempo} bpm`;
+  scheduleSessionSave();
 }
 
 function updateKeyBanner() {
@@ -1825,6 +1929,7 @@ function refreshKeyPicker() {
         updateScaleNotes();
         buildFretboard();
         renderProgression();
+        scheduleSessionSave();
       });
       keyPickerNotes.appendChild(btn);
     });
@@ -1839,6 +1944,7 @@ function refreshKeyPicker() {
           updateScaleNotes();
           buildFretboard();
           renderProgression();
+          scheduleSessionSave();
         });
       });
     }
@@ -2078,6 +2184,7 @@ function applyRhythmSelection(value) {
     if (textureSelect) textureSelect.value = "split";
   }
   updateRhythmReadout(state.activeSection);
+  scheduleSessionSave();
 }
 
 function openRhythmEditor() {
@@ -2166,7 +2273,9 @@ function syncChordPopup() {
   }
   const description = describeItem(item);
   if (chordPopupTitle) chordPopupTitle.textContent = `${description.label} • ${description.name}`;
-  if (chordPopupToken && document.activeElement !== chordPopupToken) chordPopupToken.value = item.token;
+  if (chordPopupToken && document.activeElement !== chordPopupToken) {
+    chordPopupToken.value = buildChordTokenDisplay(item.token, item.exts);
+  }
 
   if (chordPopupBeats) {
     chordPopupBeats.innerHTML = "";
@@ -2185,26 +2294,6 @@ function syncChordPopup() {
       chordPopupBeats.appendChild(btn);
     });
   }
-
-  if (chordPopupExts) {
-    chordPopupExts.innerHTML = "";
-    EXTENSION_OPTIONS.forEach((ext) => {
-      const btn = document.createElement("button");
-      btn.className = "btn ghost small";
-      btn.type = "button";
-      btn.textContent = ext;
-      if (item.exts.includes(ext)) btn.classList.add("active");
-      btn.addEventListener("click", () => {
-        const current = state.progression[state.selectedChord];
-        if (!current) return;
-        const next = Array.isArray(current.exts) ? current.exts.slice() : [];
-        if (next.includes(ext)) current.exts = next.filter((value) => value !== ext);
-        else current.exts = next.concat(ext);
-        persistSelectedChordChange();
-      });
-      chordPopupExts.appendChild(btn);
-    });
-  }
 }
 
 function openChordPopup(anchor = null) {
@@ -2213,6 +2302,13 @@ function openChordPopup(anchor = null) {
   chordPopup.setAttribute("aria-hidden", "false");
   syncChordPopup();
   positionChordPopup(anchor);
+  if (chordPopupToken) {
+    setTimeout(() => {
+      if (!chordPopup || chordPopup.classList.contains("hidden")) return;
+      chordPopupToken.focus();
+      chordPopupToken.select();
+    }, 0);
+  }
 }
 
 function closeChordPopup() {
@@ -2230,24 +2326,39 @@ function persistSelectedChordChange() {
   renderProgression();
   syncChordPopup();
   positionChordPopup();
+  scheduleSessionSave();
 }
 
 function applyPopupChordToken() {
   if (!chordPopupToken) return;
   const raw = chordPopupToken.value.trim();
-  if (!raw) return;
+  if (!raw) return false;
   const current = state.progression[state.selectedChord];
-  if (!current) return;
+  if (!current) return false;
   const { core, beats } = parseTokenBeat(raw);
   const romanParsed = parseRomanToken(core);
   if (romanParsed) {
     current.token = romanParsed.token;
-    if (romanParsed.exts.length) current.exts = romanParsed.exts;
+    current.exts = romanParsed.exts;
   } else {
-    current.token = core;
+    const parsedName = parseChordName(core);
+    if (parsedName) {
+      const romanToken = findModeRomanTokenForRoot(parsedName.root);
+      if (romanToken) {
+        current.token = romanToken;
+        current.exts = parsedName.exts || [];
+      } else {
+        current.token = core;
+        current.exts = parsedName.exts || [];
+      }
+    } else {
+      current.token = core;
+      current.exts = [];
+    }
   }
   if (raw.includes(":")) current.beats = beats;
   persistSelectedChordChange();
+  return true;
 }
 
 function generateBSectionFromCorpus() {
@@ -2267,6 +2378,39 @@ function generateBSectionFromCorpus() {
     return createChordItem(token, beats, null, exts);
   });
   state.hasBSection = state.sectionB.length > 0;
+}
+
+function removeBSection() {
+  syncActiveSectionFromProgression();
+  state.sectionB = [];
+  state.hasBSection = false;
+  if (state.activeSection === "B") {
+    state.activeSection = "A";
+    state.progression = getSectionProgression("A");
+    state.selectedChord = Math.min(state.selectedChord || 0, Math.max(0, state.progression.length - 1));
+  }
+  state.playbackSequence = buildPlaybackSequence();
+  updateSectionControls();
+  renderProgression();
+  updateChordEditor();
+  scheduleSessionSave();
+}
+
+function addOrFocusBSection({ regenerate = false } = {}) {
+  syncActiveSectionFromProgression();
+  const shouldGenerate = regenerate || !state.hasBSection || getSectionProgression("B").length === 0;
+  if (shouldGenerate) generateBSectionFromCorpus();
+  state.playbackSequence = buildPlaybackSequence();
+  switchActiveSection("B");
+  scheduleSessionSave();
+}
+
+function toggleBSectionShortcut() {
+  if (state.hasBSection) {
+    removeBSection();
+  } else {
+    addOrFocusBSection({ regenerate: false });
+  }
 }
 
 function buildPlaybackSequence() {
@@ -2310,6 +2454,34 @@ function getPhraseRoleForBar(barIndex = 0) {
   if (slot === 2) return "lift";
   if (slot === 3) return "turnaround";
   return "steady";
+}
+
+function getStyleSwingBeats(section = "A", rhythmName = state.rhythm) {
+  if (!rhythmName || rhythmName === "whole" || rhythmName === "halves") return 0;
+  let swing = STYLE_SWING_BEATS[state.style] ?? STYLE_SWING_BEATS.clean;
+  if (section === "B" && state.hasBSection) swing += 0.007;
+  if (state.tempo >= 140) swing *= 0.55;
+  else if (state.tempo >= 120) swing *= 0.75;
+  return Math.max(0, Math.min(0.085, swing));
+}
+
+function applySwingToBeatStep(step, beatWindow = 4, swingBeats = 0) {
+  if (!Number.isFinite(step) || swingBeats <= 0) return step;
+  const fractional = ((step % 1) + 1) % 1;
+  if (Math.abs(fractional - 0.5) > 0.03) return step;
+  return Math.min(Math.max(0, beatWindow - 0.02), step + swingBeats);
+}
+
+function getStyleGrooveMs(section = "A") {
+  const base = STYLE_GROOVE_MS[state.style] || STYLE_GROOVE_MS.clean;
+  if (section === "B" && state.hasBSection) {
+    return {
+      piano: base.piano + 2,
+      bass: base.bass + 2,
+      hats: base.hats + 1
+    };
+  }
+  return base;
 }
 
 function getBarIndexAtTime(time, beatDuration = 0.6) {
@@ -2655,6 +2827,7 @@ function generateProgression() {
   updateSectionControls();
   updateChordEditor();
   renderProgression();
+  scheduleSessionSave();
 }
 
 function refreshProgression() {
@@ -2906,6 +3079,10 @@ function parseProgressionInput() {
       if (romanParsed) {
         return createChordItem(romanParsed.token, beats, null, romanParsed.exts);
       }
+      const parsed = parseChordName(core);
+      if (parsed && parsed.exts.length) {
+        return createChordItem(core, beats, null, parsed.exts);
+      }
       return createChordItem(core, beats);
     });
 }
@@ -2919,22 +3096,39 @@ function syncProgressionInput() {
   progInput.value = tokens.join(" ");
 }
 
+function parseExtensionSuffix(extPart = "") {
+  const suffix = String(extPart || "").toLowerCase();
+  if (!suffix) return [];
+  const exts = [];
+  if (suffix.includes("sus4")) exts.push("sus4");
+  if (suffix.includes("add9")) exts.push("add9");
+  if (suffix.includes("maj7")) exts.push("maj7");
+  if (suffix.includes("13")) exts.push("13");
+  if (suffix.includes("11")) exts.push("11");
+  if (suffix.includes("9") && !suffix.includes("add9")) exts.push("9");
+  if (suffix.includes("6") && !suffix.includes("16")) exts.push("6");
+  if (suffix.includes("7") && !suffix.includes("maj7")) exts.push("7");
+  return exts;
+}
+
+function buildChordTokenDisplay(token, exts = []) {
+  if (!exts || exts.length === 0) return token;
+  if (exts.length === 1) {
+    const ext = exts[0];
+    if (["6", "7", "9", "11", "13"].includes(ext)) return `${token}${ext}`;
+    if (ext === "maj7") return `${token}maj7`;
+    if (ext === "add9") return `${token}add9`;
+    if (ext === "sus4") return `${token}sus4`;
+  }
+  return `${token}(${exts.join(",")})`;
+}
+
 function parseRomanToken(token) {
   const match = token.match(/^([b#]?[ivIV]+°?)(.*)$/);
   if (!match) return null;
   const roman = match[1];
   if (!romanToDegree(roman)) return null;
-  const extPart = match[2].toLowerCase();
-  if (!extPart) return { token: roman, exts: [] };
-  const exts = [];
-  if (extPart.includes("sus4")) exts.push("sus4");
-  if (extPart.includes("add9")) exts.push("add9");
-  if (extPart.includes("13")) exts.push("13");
-  if (extPart.includes("11")) exts.push("11");
-  if (extPart.includes("9")) exts.push("9");
-  if (extPart.includes("6") && !extPart.includes("16")) exts.push("6");
-  if (extPart.includes("7")) exts.push("7");
-  return { token: roman, exts };
+  return { token: roman, exts: parseExtensionSuffix(match[2]) };
 }
 
 function parseTokenBeat(token) {
@@ -3007,6 +3201,33 @@ function shouldUseFlatsForToken(token) {
   return shouldPreferFlats(state.key);
 }
 
+function noteToPitchClass(note) {
+  const normalized = FLAT_EQUIV[note] || note;
+  return NOTES.indexOf(normalized);
+}
+
+function caseRomanForDegreeIndex(degreeIndex) {
+  const degreeToken = getModeConfig(state.mode).degrees[degreeIndex] || "I";
+  const lower = degreeToken.replace(/[^iv]/g, "").length > 0;
+  const base = ["I", "II", "III", "IV", "V", "VI", "VII"][degreeIndex] || "I";
+  return lower ? base.toLowerCase() : base;
+}
+
+function findModeRomanTokenForRoot(rootNote) {
+  const tonicPc = noteToPitchClass(state.key);
+  const targetPc = noteToPitchClass(rootNote);
+  if (tonicPc < 0 || targetPc < 0) return null;
+  const scale = getModeScale(state.mode);
+  const modeConfig = getModeConfig(state.mode);
+  for (let degree = 0; degree < scale.length; degree += 1) {
+    const naturalPc = (tonicPc + scale[degree] + 1200) % 12;
+    if (naturalPc === targetPc) return modeConfig.degrees[degree];
+    if ((naturalPc + 1) % 12 === targetPc) return `#${caseRomanForDegreeIndex(degree)}`;
+    if ((naturalPc + 11) % 12 === targetPc) return `b${caseRomanForDegreeIndex(degree)}`;
+  }
+  return null;
+}
+
 function romanToDegree(token) {
   const normalized = token.replace(/[^IViv°b#]/g, "");
   const match = normalized.match(/^([b#]?)([IViv]+°?)$/);
@@ -3067,7 +3288,8 @@ function parseChordName(token) {
   if (!match) return null;
   const letter = match[1].toUpperCase();
   const accidental = match[2];
-  const suffix = match[3].toLowerCase();
+  const rawSuffix = match[3] || "";
+  const suffix = rawSuffix.toLowerCase();
   const root = `${letter}${accidental}`;
   let intervals = [0, 4, 7];
   let quality = "maj";
@@ -3093,7 +3315,7 @@ function parseChordName(token) {
 
   if (suffix.includes("maj7")) quality = "maj";
 
-  return { root, intervals, name: `${root}${suffix}`, quality };
+  return { root, intervals, name: `${root}${suffix}`, quality, exts: parseExtensionSuffix(suffix) };
 }
 
 function chordFromItem(item) {
@@ -3104,7 +3326,8 @@ function chordFromItem(item) {
   }
   const parsed = parseChordName(item.token);
   if (parsed) {
-    const intervals = applyExtensions(parsed.intervals, parsed.quality, item.exts);
+    const mergedExts = Array.from(new Set([...(parsed.exts || []), ...(item.exts || [])]));
+    const intervals = applyExtensions(parsed.intervals, parsed.quality, mergedExts);
     return { root: parsed.root, intervals, quality: parsed.quality, name: parsed.name };
   }
   return { root: "C", intervals: [0, 4, 7], quality: "maj" };
@@ -3115,12 +3338,16 @@ function describeItem(item) {
   if (roman) {
     const chord = chordFromDegree(item.token);
     const base = formatChordName(chord.root, chord.quality, state.chordSize);
-    const label = isDiatonicRomanToken(item.token, state.mode) ? item.token : `Spicy (${item.token})`;
+    const chordToken = buildChordTokenDisplay(item.token, item.exts);
+    const label = isDiatonicRomanToken(item.token, state.mode) ? chordToken : `Spicy (${chordToken})`;
     return { label, name: buildChordName(base, item.exts) };
   }
   const parsed = parseChordName(item.token);
   if (parsed) {
-    const label = item.roman ? `Spicy (${item.roman})` : `Spicy (${item.token})`;
+    const spicyToken = item.roman
+      ? buildChordTokenDisplay(item.roman, item.exts)
+      : buildChordTokenDisplay(item.token, item.exts);
+    const label = `Spicy (${spicyToken})`;
     return { label, name: buildChordName(parsed.name, item.exts) };
   }
   return { label: item.token, name: item.token };
@@ -3438,6 +3665,7 @@ function pausePlayback() {
   }
   state.uiTimeouts.forEach((id) => clearTimeout(id));
   state.uiTimeouts = [];
+  stopBeatCounterLoop();
   updatePlayButton();
 }
 
@@ -3461,6 +3689,7 @@ function resumePlayback() {
 function beginCountIn() {
   if (!state.audioCtx) return;
   if (state.audioCtx.state === "suspended") state.audioCtx.resume();
+  stopBeatCounterLoop();
   clearCountIn();
   state.isCountingIn = true;
   const beat = 60 / state.tempo;
@@ -3506,6 +3735,7 @@ function beginCountIn() {
     state.drumBarCount = 0;
     state.nextDrumTime = state.nextTime;
     state.lastCountBar = null;
+    startBeatCounterLoop(state.nextDrumTime);
     const firstEntry = state.playbackSequence[state.currentChord % state.playbackSequence.length];
     if (firstEntry?.item) {
       updateNowPlaying(
@@ -3529,6 +3759,7 @@ function resetTransportTimeline() {
     state.timerId = null;
   }
   clearCountIn();
+  stopBeatCounterLoop();
   state.isCountingIn = false;
   state.uiTimeouts.forEach((id) => clearTimeout(id));
   state.uiTimeouts = [];
@@ -3573,6 +3804,52 @@ function clearCountIn() {
   }
 }
 
+function stopBeatCounterLoop() {
+  if (state.beatCounterRaf !== null) {
+    if (typeof cancelAnimationFrame === "function") cancelAnimationFrame(state.beatCounterRaf);
+    else clearTimeout(state.beatCounterRaf);
+    state.beatCounterRaf = null;
+  }
+  state.beatCounterStartTime = null;
+  state.beatCounterLastStep = -1;
+  if (countInEl) {
+    Array.from(countInEl.querySelectorAll("span")).forEach((span) => span.classList.remove("active"));
+  }
+}
+
+function startBeatCounterLoop(startTime) {
+  if (!countInEl || !state.audioCtx || !Number.isFinite(startTime)) return;
+  stopBeatCounterLoop();
+  state.beatCounterStartTime = startTime;
+  state.beatCounterLastStep = -1;
+
+  const requestFrame = typeof requestAnimationFrame === "function"
+    ? requestAnimationFrame
+    : (cb) => setTimeout(cb, 16);
+
+  const tick = () => {
+    if (!state.isPlaying || state.isPaused || state.isCountingIn || !state.audioCtx || !Number.isFinite(state.beatCounterStartTime)) {
+      state.beatCounterRaf = null;
+      return;
+    }
+    const beat = 60 / state.tempo;
+    const elapsed = state.audioCtx.currentTime - state.beatCounterStartTime;
+    if (elapsed >= 0) {
+      const step = ((Math.floor(elapsed / beat) % 4) + 4) % 4;
+      if (step !== state.beatCounterLastStep) {
+        state.beatCounterLastStep = step;
+        const spans = Array.from(countInEl.querySelectorAll("span"));
+        spans.forEach((span) => span.classList.remove("active"));
+        const active = countInEl.querySelector(`span[data-count="${step + 1}"]`);
+        if (active) active.classList.add("active");
+      }
+    }
+    state.beatCounterRaf = requestFrame(tick);
+  };
+
+  state.beatCounterRaf = requestFrame(tick);
+}
+
 async function togglePlayback() {
   if (!state.isPlaying) {
     await startPlayback();
@@ -3611,8 +3888,7 @@ function schedulePlayback() {
   const earliestOffset = Math.min(0, (state.sampleOffsetMs || 0) / 1000, (state.bassOffsetMs || 0) / 1000);
   const offsetPad = Math.max(0, -earliestOffset);
   const lookAhead = Math.max(0.15, offsetPad + 0.05);
-  const beat = 60 / state.tempo;
-  const barLength = beat * 4;
+  const barLength = (60 / state.tempo) * 4;
   while (state.nextTime < state.audioCtx.currentTime + lookAhead) {
     const index = state.currentChord % sequence.length;
     const entry = sequence[index];
@@ -3620,14 +3896,6 @@ function schedulePlayback() {
     const chord = chordFromItem(item);
     scheduleChord(item, chord, state.nextTime, entry.sectionIndex, item.beats, entry.section, index);
     const duration = (60 / state.tempo) * item.beats;
-    const startBar = Math.floor(state.nextTime / barLength);
-    const endBar = Math.floor((state.nextTime + duration - 0.001) / barLength);
-    for (let barIndex = startBar; barIndex <= endBar; barIndex += 1) {
-      if (state.lastCountBar === barIndex) continue;
-      const barTime = barIndex * barLength;
-      scheduleBeatCount(barTime, beat);
-      state.lastCountBar = barIndex;
-    }
     state.nextTime += duration;
     state.currentChord = (state.currentChord + 1) % sequence.length;
   }
@@ -3642,20 +3910,6 @@ function schedulePlayback() {
       state.nextDrumTime += barLength;
       state.drumBarCount += 1;
     }
-  }
-}
-
-function scheduleBeatCount(barTime, beat) {
-  if (!countInEl) return;
-  for (let i = 0; i < 4; i += 1) {
-    const delay = (barTime - state.audioCtx.currentTime + i * beat) * 1000;
-    const timeout = setTimeout(() => {
-      const spans = Array.from(countInEl.querySelectorAll("span"));
-      spans.forEach((span) => span.classList.remove("active"));
-      const active = countInEl.querySelector(`span[data-count="${i + 1}"]`);
-      if (active) active.classList.add("active");
-    }, Math.max(0, delay));
-    state.countInTimeouts.push(timeout);
   }
 }
 
@@ -3681,10 +3935,16 @@ function scheduleChord(item, chord, time, index, beats, section = state.activeSe
   const isPiano = state.sampleInstrument === "piano";
   const useRealistic = isGuitar && state.realisticGuitar;
   const strumSpread = useRealistic ? 0.06 : 0.02;
+  const pianoSpread = isPiano ? 0.006 : 0;
+  const pianoJitter = () => (isPiano ? (Math.random() - 0.5) * 0.004 : 0);
   const isWhole = rhythmName === "whole";
   const beatDur = 60 / state.tempo;
   const hitTimes = rhythm.map((beat) => time + beatDur * beat);
   const splitGroups = getSplitCompGroups(notes);
+  const groove = getStyleGrooveMs(section);
+  const chordLagSec = isPiano ? groove.piano / 1000 : 0;
+  const lowRootMidi = noteToMidi(root, 2);
+  const lowFifthMidi = lowRootMidi + 7;
   const getHoldUntilNext = (idx, baseDuration) => {
     const next = hitTimes[idx + 1];
     if (!next) return baseDuration;
@@ -3704,8 +3964,18 @@ function scheduleChord(item, chord, time, index, beats, section = state.activeSe
     return Math.max(0.45, Math.min(1.15, base * factor));
   };
   rhythm.forEach((beat, idx) => {
-    const hitTime = time + (60 / state.tempo) * beat;
+    const hitTime = time + (60 / state.tempo) * beat + chordLagSec;
     const beatInBar = ((beat % 4) + 4) % 4;
+    const isStrongBeat = Math.abs(beatInBar) < 0.01 || Math.abs(beatInBar - 2) < 0.01;
+    if (isPiano && isStrongBeat && Math.random() < 0.9) {
+      const lowDur = Math.min(duration * 0.8, beatDur * (isWhole ? 2.2 : 1.5));
+      const lowTime = hitTime + pianoJitter() * 0.4;
+      playNote(lowRootMidi, lowTime, lowDur, getCompVelocity(0.54, lowTime, beatInBar));
+      if (Math.random() < 0.33) {
+        const fifthTime = lowTime + 0.01;
+        playNote(lowFifthMidi, fifthTime, Math.min(lowDur, beatDur * 1.1), getCompVelocity(0.4, fifthTime, beatInBar));
+      }
+    }
     if (state.texture === "arp") {
       const noteDur = isWhole ? duration : getHoldUntilNext(idx, duration * 0.6);
       notes.forEach((midi, noteIdx) => {
@@ -3715,10 +3985,10 @@ function scheduleChord(item, chord, time, index, beats, section = state.activeSe
     } else if (state.texture === "split") {
       const noteDur = isWhole ? duration : getHoldUntilNext(idx, duration * 0.55);
       const group = idx % 2 === 0 ? splitGroups.low : splitGroups.high;
-      const spread = isPiano ? 0 : (useRealistic ? strumSpread * 0.55 : 0.01);
+      const spread = isPiano ? pianoSpread : (useRealistic ? strumSpread * 0.55 : 0.01);
       const baseVelocity = idx % 2 === 0 ? 0.82 : 0.9;
       group.forEach((midi, groupIdx) => {
-        const humanize = useRealistic ? (Math.random() - 0.5) * 0.01 : 0;
+        const humanize = useRealistic ? (Math.random() - 0.5) * 0.01 : pianoJitter();
         const noteTime = hitTime + groupIdx * spread + humanize;
         const velocity = Math.max(0.55, baseVelocity - groupIdx * 0.07);
         playNote(midi, noteTime, noteDur, getCompVelocity(velocity, noteTime, beatInBar));
@@ -3726,7 +3996,7 @@ function scheduleChord(item, chord, time, index, beats, section = state.activeSe
       if (idx % 4 === 3 && Math.random() < 0.28) {
         const accentDur = isWhole ? duration * 0.4 : noteDur * 0.5;
         notes.forEach((midi, noteIdx) => {
-          const accentSpread = isPiano ? 0 : noteIdx * 0.012;
+          const accentSpread = isPiano ? noteIdx * (pianoSpread * 0.5) : noteIdx * 0.012;
           const accentTime = hitTime + 0.02 + accentSpread;
           playNote(midi, accentTime, accentDur, getCompVelocity(0.62, accentTime, beatInBar));
         });
@@ -3744,10 +4014,10 @@ function scheduleChord(item, chord, time, index, beats, section = state.activeSe
         });
       } else {
         const isUpstroke = Math.random() < 0.4;
-        const offset = isPiano ? 0 : (isUpstroke ? -0.02 : 0);
+        const offset = isPiano ? pianoJitter() : (isUpstroke ? -0.02 : 0);
         const noteDur = isWhole ? duration : getHoldUntilNext(idx, duration * 0.35);
-        notes.forEach((midi) => {
-          const noteTime = hitTime + offset;
+        notes.forEach((midi, noteIdx) => {
+          const noteTime = hitTime + offset + (isPiano ? noteIdx * (pianoSpread * 0.4) : 0);
           playNote(midi, noteTime, noteDur, getCompVelocity(0.75, noteTime, beatInBar));
         });
       }
@@ -3768,9 +4038,22 @@ function scheduleChord(item, chord, time, index, beats, section = state.activeSe
       } else {
         const noteDur = isWhole ? duration : getHoldUntilNext(idx, duration * 0.7);
         notes.forEach((midi, noteIdx) => {
-          const spread = isPiano ? 0 : noteIdx * 0.02;
-          const noteTime = hitTime + spread;
+          const spread = isPiano ? noteIdx * pianoSpread : noteIdx * 0.02;
+          const noteTime = hitTime + spread + pianoJitter();
           playNote(midi, noteTime, noteDur, getCompVelocity(0.9, noteTime, beatInBar));
+        });
+      }
+    }
+
+    if (isPiano && isWhole && beats >= 4) {
+      const answerTime = hitTime + beatDur * 2 + pianoJitter();
+      const chordEnd = time + duration;
+      if (answerTime + 0.06 < chordEnd && Math.random() < 0.75) {
+        const answerDur = Math.max(beatDur * 1.1, duration * 0.34);
+        const answerNotes = notes.slice(-Math.min(3, notes.length));
+        answerNotes.forEach((midi, noteIdx) => {
+          const t = answerTime + noteIdx * (pianoSpread * 0.55);
+          playNote(midi, t, answerDur, getCompVelocity(0.6, t, 2));
         });
       }
     }
@@ -3778,7 +4061,7 @@ function scheduleChord(item, chord, time, index, beats, section = state.activeSe
 
   scheduleUiUpdate(item, chord, time, index, section);
   if (state.bassEnabled) {
-    scheduleBass(root, time, item.beats, section, sequenceIndex);
+    scheduleBass(chord, time, item.beats, section, sequenceIndex);
   }
 }
 
@@ -3880,6 +4163,7 @@ function getChordRhythm(beats, section = "A", startTime = 0) {
   const rhythmName = getRhythmNameForSection(section);
   const pattern = RHYTHMS[rhythmName] || RHYTHMS.whole;
   const beatDur = 60 / state.tempo;
+  const swingBeats = getStyleSwingBeats(section, rhythmName);
   const hits = [];
   // Rhythm patterns are bar-based. Build each bar and apply tiny phrase variation.
   for (let barStart = 0; barStart < beats; barStart += 4) {
@@ -3905,14 +4189,28 @@ function getChordRhythm(beats, section = "A", startTime = 0) {
     }
     hits.push(...barHits.filter((hit) => hit < beats));
   }
-  return uniqSortedNumeric(hits);
+  return uniqSortedNumeric(
+    hits
+      .map((hit) => applySwingToBeatStep(hit, beats, swingBeats))
+      .filter((hit) => hit < beats)
+  );
 }
 
-function scheduleBass(root, time, beats = 4, section = "A", sequenceIndex = 0) {
+function scheduleBass(chord, time, beats = 4, section = "A", sequenceIndex = 0) {
+  if (!chord || !chord.root) return;
   const beat = 60 / state.tempo;
-  const baseMidi = noteToMidi(root, 2);
+  const baseMidi = noteToMidi(chord.root, 2);
   const rhythm = BASS_RHYTHMS[state.bassRhythm] || BASS_RHYTHMS.steady;
   const sequence = state.playbackSequence || [];
+  const groove = getStyleGrooveMs(section);
+  const bassLag = groove.bass / 1000;
+  const intervals = Array.isArray(chord.intervals) ? chord.intervals.slice() : [0, 7];
+  const thirdInterval = intervals.find((interval) => interval === 3 || interval === 4);
+  const fifthInterval = intervals.find((interval) => interval === 6 || interval === 7 || interval === 8);
+  const seventhInterval = intervals.find((interval) => interval === 10 || interval === 11);
+  const chordTones = [0, thirdInterval, fifthInterval, seventhInterval]
+    .filter((interval) => Number.isFinite(interval))
+    .map((interval) => baseMidi + interval);
   let nextRootMidi = baseMidi;
   if (sequence.length > 1) {
     const nextEntry = sequence[(sequenceIndex + 1) % sequence.length];
@@ -3921,18 +4219,29 @@ function scheduleBass(root, time, beats = 4, section = "A", sequenceIndex = 0) {
       nextRootMidi = noteToMidi(nextChord.root, 2);
     }
   }
-  const getApproachMidi = () => {
-    if (nextRootMidi === baseMidi) return baseMidi + 7;
-    const direction = nextRootMidi >= baseMidi ? 1 : -1;
-    return nextRootMidi - direction;
-  };
   const clampBassMidi = (midi) => {
     let out = midi;
     while (out < 28) out += 12;
     while (out > 60) out -= 12;
     return out;
   };
+  const clampedChordTones = chordTones.map((midi) => clampBassMidi(midi));
+  const pickChordTone = (preferColor = false) => {
+    if (!clampedChordTones.length) return baseMidi;
+    const pool = preferColor
+      ? clampedChordTones.filter((midi) => midi !== clampBassMidi(baseMidi))
+      : clampedChordTones;
+    const source = pool.length ? pool : clampedChordTones;
+    return source[Math.floor(Math.random() * source.length)];
+  };
+  const getApproachMidi = () => {
+    if (nextRootMidi === baseMidi) return clampBassMidi(baseMidi + 7);
+    const direction = nextRootMidi >= baseMidi ? 1 : -1;
+    const semitone = nextRootMidi - direction;
+    return clampBassMidi(semitone);
+  };
   const totalBeats = Math.max(1, beats || 4);
+  const swingBeats = getStyleSwingBeats(section, getRhythmNameForSection(section)) * 0.9;
   let cursor = 0;
   while (cursor < totalBeats) {
     const windowBeats = Math.min(4, totalBeats - cursor);
@@ -3952,20 +4261,31 @@ function scheduleBass(root, time, beats = 4, section = "A", sequenceIndex = 0) {
     if (windowBeats >= 4 && phraseRole === "turnaround") {
       barSteps.push(3.5);
     }
-    barSteps = uniqSortedNumeric(barSteps);
+    barSteps = uniqSortedNumeric(
+      barSteps.map((step) => applySwingToBeatStep(step, windowBeats, swingBeats))
+    );
     barSteps.forEach((step, hitIdx) => {
       let noteMidi = baseMidi;
       const isPickup = step >= 3.25 && windowBeats >= 4;
       if (isPickup && (phraseRole === "turnaround" || (phraseRole === "lift" && Math.random() < 0.7))) {
         noteMidi = getApproachMidi();
-      } else if (step >= 1.5 && step < 2.5 && Math.random() < 0.28) {
-        noteMidi = baseMidi + 7;
-      } else if (step >= 2.5 && Math.random() < 0.14) {
-        noteMidi = baseMidi + 12;
+      } else if (hitIdx === 0) {
+        noteMidi = baseMidi;
+      } else if (state.bassRhythm === "walking") {
+        if (Math.random() < 0.4) {
+          const direction = nextRootMidi >= baseMidi ? 1 : -1;
+          noteMidi = baseMidi + direction * (Math.random() < 0.6 ? 2 : 1);
+        } else {
+          noteMidi = pickChordTone(true);
+        }
+      } else if (step >= 1.5 && step < 2.5 && Math.random() < 0.5) {
+        noteMidi = pickChordTone(true);
+      } else if (step >= 2.5 && Math.random() < 0.3) {
+        noteMidi = pickChordTone(true);
       }
       noteMidi = clampBassMidi(noteMidi);
       const jitter = (Math.random() - 0.5) * (state.bassRhythm === "walking" ? 0.008 : 0.005);
-      const hitTime = windowStart + step * beat + jitter;
+      const hitTime = windowStart + step * beat + jitter + bassLag;
       const durBase = state.bassRhythm === "eighths" ? 0.45 : state.bassRhythm === "walking" ? 0.65 : 0.85;
       const dur = beat * (isPickup ? 0.34 : durBase);
       const roleBoost = phraseRole === "turnaround" ? 1.06 : phraseRole === "lift" ? 1.03 : 1;
@@ -4446,7 +4766,13 @@ function scheduleDrums(barTime, beats = 4, fill = false, section = "A") {
   const barStart = barTime;
   const barIndex = getBarIndexAtTime(barStart, beat);
   const phraseRole = getPhraseRoleForBar(barIndex);
-  const hitTimeForStep = (step, ms = 0) => barStart + step * beat + (Math.random() - 0.5) * ((ms * 2) / 1000);
+  const groove = getStyleGrooveMs(section);
+  const hatLag = groove.hats / 1000;
+  const swingBeats = getStyleSwingBeats(section, getRhythmNameForSection(section));
+  const hitTimeForStep = (step, ms = 0, allowSwing = true) => {
+    const swungStep = allowSwing ? applySwingToBeatStep(step, beats, swingBeats) : step;
+    return barStart + swungStep * beat + (Math.random() - 0.5) * ((ms * 2) / 1000);
+  };
   if (DEBUG_AUDIO) {
     console.log("[GPL] scheduleDrums", { barStart, beats, fill, useSamples, style: state.drumStyle, phraseRole });
   }
@@ -4456,7 +4782,7 @@ function scheduleDrums(barTime, beats = 4, fill = false, section = "A") {
   if (phraseRole === "turnaround" && beats >= 4 && Math.random() < 0.18) kickSteps.push(3.25);
   kickSteps = uniqSortedNumeric(kickSteps).filter((step) => step < beats);
   kickSteps.forEach((step) => {
-    const hitTime = hitTimeForStep(step, step % 1 === 0 ? 2 : 5);
+    const hitTime = hitTimeForStep(step, step % 1 === 0 ? 2 : 5, true);
     const gain = (step === 0 ? 0.92 : 0.84) * (phraseRole === "turnaround" ? 1.05 : phraseRole === "lift" ? 1.02 : 1) * (0.94 + Math.random() * 0.12);
     if (!(useSamples && playDrumSample(kit.kick, hitTime, gain))) playKick(hitTime, sound);
   });
@@ -4470,13 +4796,13 @@ function scheduleDrums(barTime, beats = 4, fill = false, section = "A") {
   }
   const snareSteps = uniqSortedNumeric([1, 3, ...(pattern.snare || []), ...fillSnare]).filter((step) => step < beats);
   snareSteps.forEach((step) => {
-    const hitTime = hitTimeForStep(step, 3);
+    const hitTime = hitTimeForStep(step, 3, false);
     const snareUrl = kit?.snareB && Math.random() < 0.35 ? kit.snareB : kit?.snareA;
     const gain = 0.74 * (0.94 + Math.random() * 0.14);
     if (!(useSamples && snareUrl && playDrumSample(snareUrl, hitTime, gain))) playSnare(hitTime, sound);
   });
   ghostSnareSteps.filter((step) => step < beats).forEach((step) => {
-    const hitTime = hitTimeForStep(step, 6);
+    const hitTime = hitTimeForStep(step, 6, false);
     const ghostUrl = kit?.snareA || kit?.snareB;
     if (!(useSamples && ghostUrl && playDrumSample(ghostUrl, hitTime, 0.22))) playSnare(hitTime, sound);
   });
@@ -4486,7 +4812,7 @@ function scheduleDrums(barTime, beats = 4, fill = false, section = "A") {
   if (phraseRole === "turnaround" && beats >= 4 && Math.random() < 0.35) hatSteps.push(3.25);
   hatSteps = uniqSortedNumeric(hatSteps).filter((step) => step < beats);
   hatSteps.forEach((step) => {
-    const hitTime = hitTimeForStep(step, 8);
+    const hitTime = hitTimeForStep(step, 8, true) + hatLag;
     const accent = Math.abs((step % 1) - 0.5) < 0.01 ? 1.07 : 0.95;
     const gain = 0.33 * accent * (0.9 + Math.random() * 0.22);
     if (!(useSamples && kit?.hatClosed && playDrumSample(kit.hatClosed, hitTime, gain))) playHat(hitTime, sound);
@@ -4497,7 +4823,7 @@ function scheduleDrums(barTime, beats = 4, fill = false, section = "A") {
     ...((phraseRole === "turnaround" && beats >= 4 && !fill) ? [3.5] : [])
   ]).filter((step) => step < beats);
   openHatSteps.forEach((step) => {
-    const hitTime = hitTimeForStep(step, 7);
+    const hitTime = hitTimeForStep(step, 7, true) + hatLag;
     if (useSamples && kit?.hatOpen) playDrumSample(kit.hatOpen, hitTime, 0.46 * (0.92 + Math.random() * 0.14));
   });
 
@@ -4508,7 +4834,7 @@ function scheduleDrums(barTime, beats = 4, fill = false, section = "A") {
       ...((phraseRole === "turnaround" && !fill) ? [3.5] : [])
     ]).filter((step) => step < beats);
     percSteps.forEach((step) => {
-      const hitTime = hitTimeForStep(step, 9);
+      const hitTime = hitTimeForStep(step, 9, true) + hatLag;
       if (useSamples && percUrl) playDrumSample(percUrl, hitTime, 0.46 * (0.9 + Math.random() * 0.2));
     });
   }
@@ -5045,6 +5371,7 @@ function applyPreset({ tokens, beats = 4, mode = "major", exts = [] }) {
   updateSectionControls();
   updateChordEditor();
   renderProgression();
+  scheduleSessionSave();
 }
 
 function bumpSessionCounters() {

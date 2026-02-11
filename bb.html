@@ -4,7 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Backing Buddy</title>
-  <link rel="stylesheet" href="bb/styles.css" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="stylesheet" href="bb/styles.css?v=20260211g" />
 </head>
 <body>
   <div class="bg-orbit"></div>
@@ -127,7 +128,7 @@
                   <select id="formBRepeats"></select>
                 </label>
               </div>
-            </div>
+              </div>
             </div>
             <div class="progression-sections">
               <div class="progression-section" data-section="A">
@@ -156,19 +157,11 @@
                 <div class="editor-label">Duration (beats)</div>
                 <div id="chordPopupBeats" class="editor-buttons"></div>
               </div>
-              <div class="editor-row">
-                <div class="editor-label">Extensions</div>
-                <div id="chordPopupExts" class="editor-buttons"></div>
-              </div>
             </div>
           </div>
           <div class="chord-editor">
             <div class="editor-header">Selected Chord</div>
             <div id="selectedChordLabel" class="selected-chord">Select a chord</div>
-            <div class="editor-row">
-              <div class="editor-label">Extensions</div>
-              <div id="extensionButtons" class="editor-buttons"></div>
-            </div>
             <div class="editor-row">
               <div class="editor-label">Duration (beats)</div>
               <div id="beatButtons" class="editor-buttons"></div>
@@ -424,7 +417,7 @@
             </label>
             <label>
               Bass Level
-              <input id="bassLevel" type="range" min="0" max="100" step="1" value="62" />
+              <input id="bassLevel" type="range" min="0" max="100" step="1" value="100" />
             </label>
             <label>
               Bass Timing
@@ -494,6 +487,7 @@
 
   <footer class="footer footer-credits">
     <div class="footer-attribution">CC BY 3.0: Pearl Master Studio • CR-78 Public Domain (via oramics)</div>
+    <div class="footer-attribution">Shortcuts: Space Play/Pause • R Regenerate • B Toggle B Section • M Download MIDI</div>
   </footer>
 
   <div class="mobile-transport">
@@ -505,8 +499,10 @@
       title="Refresh progression"
     >
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M20 6v6h-6" />
-        <path d="M20 12a8 8 0 1 1-2.3-5.7L20 8.6" />
+        <path d="M4 4v5h5" />
+        <path d="M20 20v-5h-5" />
+        <path d="M20 9a8 8 0 0 0-13.66-3.24L4 8" />
+        <path d="M4 15a8 8 0 0 0 13.66 3.24L20 16" />
       </svg>
     </button>
     <button id="mobilePlay" class="btn primary play">Play</button>
@@ -517,6 +513,6 @@
     </button>
   </div>
 
-  <script src="bb/app.js"></script>
+  <script src="bb/app.js?v=20260211d"></script>
 </body>
 </html>

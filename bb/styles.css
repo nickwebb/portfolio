@@ -665,7 +665,7 @@ body {
   .key-row .transport-mini {
     margin-left: 0;
     justify-self: end;
-    white-space: nowrap;
+    white-space: normal;
   }
 
   .key-row .key-banner,
@@ -905,6 +905,7 @@ input[type="text"] {
   min-width: 42px;
   height: 42px;
   padding: 0;
+  line-height: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -913,6 +914,8 @@ input[type="text"] {
 .mobile-transport .mobile-refresh svg {
   width: 19px;
   height: 19px;
+  display: block;
+  overflow: visible;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -1569,6 +1572,9 @@ input[type="text"] {
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(12, 15, 23, 0.66);
   backdrop-filter: blur(6px);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  row-gap: 8px;
 }
 
 .transport-mini .btn.primary.play {
@@ -1964,7 +1970,9 @@ input[type="text"] {
 
 .footer.footer-credits {
   justify-content: center;
+  flex-direction: column;
   align-items: center;
+  gap: 6px;
 }
 
 .footer-meta {
@@ -1976,6 +1984,27 @@ input[type="text"] {
   color: rgba(255, 255, 255, 0.52);
   white-space: nowrap;
   text-align: center;
+}
+
+/* Back-compat: if an older cached markup still renders .footer-shortcuts, style it like attribution and place it below. */
+.footer.footer-credits .footer-attribution:first-child {
+  order: 1;
+}
+
+.footer.footer-credits .footer-shortcuts,
+.footer.footer-credits .footer-attribution + .footer-attribution {
+  order: 2;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.52);
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* Back-compat: force-hide any stale cached Copy Chords controls. */
+#copyProgression,
+button[title*="Copy progression"],
+button[title*="Copy Chords"] {
+  display: none !important;
 }
 
 @media (max-width: 900px) {
@@ -2011,12 +2040,17 @@ input[type="text"] {
   }
 
   .section {
-    padding: 24px 6vw 86px;
+    padding: 18px 5vw 86px;
   }
 
   .grid.practice-grid {
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 14px;
+  }
+
+  .card {
+    padding: 16px;
+    border-radius: 16px;
   }
 
   .generator-row {
@@ -2069,6 +2103,14 @@ input[type="text"] {
     align-items: center;
     gap: 10px;
     padding-right: 0;
+  }
+
+  .progression-block {
+    gap: 8px;
+  }
+
+  .progression-sections {
+    gap: 8px;
   }
 
   .progression-block .key-row .left-controls {
@@ -2149,12 +2191,13 @@ input[type="text"] {
   .progression.large {
     grid-template-columns: repeat(2, minmax(120px, 1fr));
     grid-auto-rows: minmax(110px, auto);
-    padding: 16px;
+    padding: 12px;
+    gap: 10px;
   }
 
   .progression-item {
-    min-height: 92px;
-    padding: 13px 14px;
+    min-height: 88px;
+    padding: 12px;
   }
 
   .progression-item strong {
@@ -2206,6 +2249,7 @@ input[type="text"] {
   .transport-meta {
     justify-content: flex-start;
     gap: 8px;
+    margin-top: 6px;
   }
 
   .rhythm-pill {
@@ -2314,6 +2358,7 @@ input[type="text"] {
   .chord-popup {
     padding: 14px;
     border-radius: 14px;
+    gap: 12px;
   }
 
   .chord-popup-title {
@@ -2321,9 +2366,13 @@ input[type="text"] {
   }
 
   .chord-popup .btn.small {
-    min-height: 40px;
+    min-height: 42px;
     font-size: 0.9rem;
     padding: 8px 12px;
+  }
+
+  .chord-popup-actions .btn {
+    flex: 1 1 120px;
   }
 
   .chord-popup label {
@@ -2391,6 +2440,11 @@ input[type="text"] {
   .footer-attribution {
     white-space: normal;
   }
+
+  .footer.footer-credits .footer-shortcuts,
+  .footer.footer-credits .footer-attribution + .footer-attribution {
+    white-space: normal;
+  }
 }
 
 @media (max-width: 600px) {
@@ -2443,7 +2497,7 @@ input[type="text"] {
     grid-template-columns: 1fr;
     grid-auto-rows: minmax(96px, auto);
     overflow: visible;
-    gap: 10px;
+    gap: 8px;
   }
 
   .progression-item {
@@ -2455,11 +2509,11 @@ input[type="text"] {
   }
 
   .card {
-    padding: 18px;
+    padding: 14px;
   }
 
   .chord-editor,
   .generator {
-    padding: 12px;
+    padding: 10px;
   }
 }

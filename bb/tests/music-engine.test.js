@@ -489,10 +489,29 @@ test("in C major, spicy bIIadd9 is labeled with Db spelling (not Bii)", () => {
   const item = createChordItem("bII", 4, null, ["add9"]);
   const description = describeItem(item);
   const chord = chordFromItem(item);
-  assert.equal(description.label, "Spicy (bII)");
+  assert.equal(description.label, "Spicy (bIIadd9)");
   assert.ok(description.name.startsWith("Db"));
   assert.equal(chord.root, "Db");
   assert.ok(!description.name.toLowerCase().includes("bii"));
+});
+
+test("roman label displays extension suffix for edited chords", () => {
+  const { state, createChordItem, describeItem } = loadEngine();
+  resetState(state);
+  state.mode = "major";
+  state.key = "F#";
+  const item = createChordItem("IV", 4, null, ["add9"]);
+  const description = describeItem(item);
+  assert.equal(description.label, "IVadd9");
+});
+
+test("inline chord token add9 adds the 9th interval", () => {
+  const { state, createChordItem, chordFromItem } = loadEngine();
+  resetState(state);
+  state.mode = "major";
+  state.key = "F#";
+  const chord = chordFromItem(createChordItem("Badd9", 4));
+  assert.ok(chord.intervals.includes(14));
 });
 
 test("whole-note rhythm repeats once per bar for long chords", () => {
