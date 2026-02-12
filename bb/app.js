@@ -380,6 +380,9 @@ const state = {
 const SAVED_PROG_KEY = "gpl_saved_progressions";
 const LAST_SESSION_KEY = "bb_last_session";
 const LATENCY_COMP_KEY = "gpl_latency_comp";
+const SHARE_QUERY_KEY = "bb";
+const SHARE_STATE_VERSION = 1;
+const SHARE_URL_VERSION = 2;
 const DEBUG_AUDIO = true;
 const LOG_SAMPLE_MISS = true;
 let isMobileLayout = window.innerWidth <= 900;
@@ -401,74 +404,243 @@ function serializeProgression(list = []) {
 
 function saveLastSession() {
   try {
-    const payload = {
-      version: 1,
-      key: state.key,
-      mode: state.mode,
-      tempo: state.tempo,
-      style: state.style,
-      texture: state.texture,
-      rhythm: state.rhythm,
-      drumStyle: state.drumStyle,
-      bassRhythm: state.bassRhythm,
-      keyLocked: !!state.keyLocked,
-      aRepeats: state.aRepeats,
-      bRepeats: state.bRepeats,
-      hasBSection: !!state.hasBSection,
-      activeSection: state.activeSection,
-      selectedChord: state.selectedChord,
-      sectionA: serializeProgression(state.sectionA),
-      sectionB: serializeProgression(state.sectionB),
-      progression: serializeProgression(state.progression)
-    };
+    const payload = buildSessionPayload();
     localStorage.setItem(LAST_SESSION_KEY, JSON.stringify(payload));
+    updateShareUrl(payload);
   } catch (error) {
     // best-effort persistence
   }
+}
+
+function buildSessionPayload() {
+  return {
+    version: SHARE_STATE_VERSION,
+    key: state.key,
+    mode: state.mode,
+    tempo: state.tempo,
+    style: state.style,
+    texture: state.texture,
+    rhythm: state.rhythm,
+    drumStyle: state.drumStyle,
+    bassRhythm: state.bassRhythm,
+    keyLocked: !!state.keyLocked,
+    aRepeats: state.aRepeats,
+    bRepeats: state.bRepeats,
+    hasBSection: !!state.hasBSection,
+    activeSection: state.activeSection,
+    selectedChord: state.selectedChord,
+    sectionA: serializeProgression(state.sectionA),
+    sectionB: serializeProgression(state.sectionB),
+    progression: serializeProgression(state.progression)
+  };
+}
+
+function formatShareBeat(beats) {
+  if (!Number.isFinite(beats)) return "4";
+  if (Number.isInteger(beats)) return String(beats);
+  return String(Math.round(beats * 100) / 100);
+}
+
+function serializeProgressionForShare(list = []) {
+  return normalizeProgression(list)
+    .map((item) => {
+      const token = buildChordTokenDisplay(item.token, item.exts || []);
+      const beat = Number.isFinite(item.beats) ? item.beats : 4;
+      return beat === 4 ? token : `${token}:${formatShareBeat(beat)}`;
+    })
+    .join(",");
+}
+
+function parseProgressionFromShare(value = "") {
+  if (!value || typeof value !== "string") return [];
+  return value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((token) => {
+      const { core, beats } = parseTokenBeat(token);
+      const romanParsed = parseRomanToken(core);
+      if (romanParsed) return createChordItem(romanParsed.token, beats, null, romanParsed.exts);
+      const parsed = parseChordName(core);
+      if (parsed) return createChordItem(core, beats, null, parsed.exts || []);
+      return createChordItem(core, beats);
+    });
+}
+
+function encodeSharePayload(payload) {
+  if (!payload) return "";
+  try {
+    const json = JSON.stringify(payload);
+    if (typeof TextEncoder !== "undefined" && typeof btoa === "function") {
+      const bytes = new TextEncoder().encode(json);
+      let binary = "";
+      bytes.forEach((value) => {
+        binary += String.fromCharCode(value);
+      });
+      return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+    }
+    return encodeURIComponent(json);
+  } catch (error) {
+    return "";
+  }
+}
+
+function decodeSharePayload(encoded) {
+  if (!encoded || typeof encoded !== "string") return null;
+  try {
+    const padded = encoded.replace(/-/g, "+").replace(/_/g, "/");
+    const normalized = padded + "=".repeat((4 - (padded.length % 4)) % 4);
+    if (typeof atob === "function") {
+      const binary = atob(normalized);
+      if (typeof TextDecoder !== "undefined") {
+        const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+        return JSON.parse(new TextDecoder().decode(bytes));
+      }
+      return JSON.parse(binary);
+    }
+  } catch (error) {
+    // fallback to URI-decoded JSON
+  }
+  try {
+    return JSON.parse(decodeURIComponent(encoded));
+  } catch (error) {
+    return null;
+  }
+}
+
+function applySessionPayload(data) {
+  if (!data || typeof data !== "object") return false;
+
+  state.key = normalizeKeyDisplay(data.key || state.key);
+  state.mode = normalizeMode(data.mode || state.mode);
+  state.tempo = Number.isFinite(data.tempo) ? Math.max(50, Math.min(200, Math.round(data.tempo))) : state.tempo;
+  state.style = data.style || state.style;
+  state.texture = data.texture || state.texture;
+  state.rhythm = data.rhythm || state.rhythm;
+  state.drumStyle = data.drumStyle || state.drumStyle;
+  state.bassRhythm = data.bassRhythm || state.bassRhythm;
+  state.keyLocked = !!data.keyLocked;
+  state.aRepeats = Math.max(1, Math.min(16, Number(data.aRepeats) || state.aRepeats || 2));
+  state.bRepeats = Math.max(1, Math.min(16, Number(data.bRepeats) || state.bRepeats || 2));
+  state.hasBSection = !!data.hasBSection;
+  state.activeSection = data.activeSection === "B" ? "B" : "A";
+  state.selectedChord = Math.max(0, Number(data.selectedChord) || 0);
+
+  const sectionA = normalizeProgression(data.sectionA || data.progression || []);
+  const sectionB = normalizeProgression(data.sectionB || []);
+  if (!sectionA.length) return false;
+
+  state.sectionA = sectionA;
+  state.sectionB = state.hasBSection ? sectionB : [];
+  if (state.activeSection === "B" && !state.sectionB.length) state.activeSection = "A";
+  state.progression = state.activeSection === "B" ? getSectionProgression("B") : getSectionProgression("A");
+
+  if (keySelect) keySelect.value = FLAT_EQUIV[state.key] || state.key;
+  if (modeSelect) modeSelect.value = state.mode;
+  if (tempoSlider) tempoSlider.value = String(state.tempo);
+  if (styleSelect) styleSelect.value = state.style;
+  if (textureSelect) textureSelect.value = state.texture;
+  if (rhythmSelect) rhythmSelect.value = state.rhythm;
+  if (drumStyleSelect) drumStyleSelect.value = state.drumStyle;
+  if (bassRhythmSelect) bassRhythmSelect.value = state.bassRhythm;
+  return true;
 }
 
 function restoreLastSession() {
   try {
     const raw = localStorage.getItem(LAST_SESSION_KEY);
     if (!raw) return false;
-    const data = JSON.parse(raw);
-    if (!data || typeof data !== "object") return false;
-
-    state.key = normalizeKeyDisplay(data.key || state.key);
-    state.mode = normalizeMode(data.mode || state.mode);
-    state.tempo = Number.isFinite(data.tempo) ? Math.max(50, Math.min(200, Math.round(data.tempo))) : state.tempo;
-    state.style = data.style || state.style;
-    state.texture = data.texture || state.texture;
-    state.rhythm = data.rhythm || state.rhythm;
-    state.drumStyle = data.drumStyle || state.drumStyle;
-    state.bassRhythm = data.bassRhythm || state.bassRhythm;
-    state.keyLocked = !!data.keyLocked;
-    state.aRepeats = Math.max(1, Math.min(16, Number(data.aRepeats) || state.aRepeats || 2));
-    state.bRepeats = Math.max(1, Math.min(16, Number(data.bRepeats) || state.bRepeats || 2));
-    state.hasBSection = !!data.hasBSection;
-    state.activeSection = data.activeSection === "B" ? "B" : "A";
-    state.selectedChord = Math.max(0, Number(data.selectedChord) || 0);
-
-    const sectionA = normalizeProgression(data.sectionA || data.progression || []);
-    const sectionB = normalizeProgression(data.sectionB || []);
-    if (!sectionA.length) return false;
-
-    state.sectionA = sectionA;
-    state.sectionB = state.hasBSection ? sectionB : [];
-    if (state.activeSection === "B" && !state.sectionB.length) state.activeSection = "A";
-    state.progression = state.activeSection === "B" ? getSectionProgression("B") : getSectionProgression("A");
-
-    if (keySelect) keySelect.value = FLAT_EQUIV[state.key] || state.key;
-    if (modeSelect) modeSelect.value = state.mode;
-    if (tempoSlider) tempoSlider.value = String(state.tempo);
-    if (styleSelect) styleSelect.value = state.style;
-    if (textureSelect) textureSelect.value = state.texture;
-    if (rhythmSelect) rhythmSelect.value = state.rhythm;
-    if (drumStyleSelect) drumStyleSelect.value = state.drumStyle;
-    if (bassRhythmSelect) bassRhythmSelect.value = state.bassRhythm;
-    return true;
+    return applySessionPayload(JSON.parse(raw));
   } catch (error) {
     return false;
+  }
+}
+
+function restoreShareFromUrl() {
+  if (typeof window === "undefined" || !window.location) return false;
+  try {
+    const params = new URLSearchParams(window.location.search || "");
+    if (params.has("a")) {
+      const sectionA = normalizeProgression(parseProgressionFromShare(params.get("a") || ""));
+      const sectionB = normalizeProgression(parseProgressionFromShare(params.get("b") || ""));
+      if (!sectionA.length) return false;
+      const hasBSection = sectionB.length > 0 || params.get("hasB") === "1";
+      const payload = {
+        version: SHARE_URL_VERSION,
+        key: params.get("key") || state.key,
+        mode: params.get("mode") || state.mode,
+        tempo: Number(params.get("tempo")) || state.tempo,
+        style: params.get("style") || state.style,
+        texture: params.get("texture") || state.texture,
+        rhythm: params.get("rhythm") || state.rhythm,
+        drumStyle: params.get("drumStyle") || state.drumStyle,
+        bassRhythm: params.get("bassRhythm") || state.bassRhythm,
+        keyLocked: params.get("keyLocked") === "1",
+        aRepeats: Number(params.get("aLoops")) || state.aRepeats,
+        bRepeats: Number(params.get("bLoops")) || state.bRepeats,
+        hasBSection,
+        activeSection: params.get("section") === "B" ? "B" : "A",
+        selectedChord: Number(params.get("chord")) || 0,
+        sectionA,
+        sectionB,
+        progression: sectionA
+      };
+      return applySessionPayload(payload);
+    }
+    const encoded = params.get(SHARE_QUERY_KEY);
+    if (!encoded) return false;
+    const decoded = decodeSharePayload(encoded);
+    return applySessionPayload(decoded);
+  } catch (error) {
+    return false;
+  }
+}
+
+function updateShareUrl(payload = null) {
+  if (typeof window === "undefined" || !window.location || !window.history || typeof window.history.replaceState !== "function") {
+    return;
+  }
+  try {
+    const data = payload || buildSessionPayload();
+    const url = new URL(window.location.href);
+    const sectionA = serializeProgressionForShare(data.sectionA || data.progression || []);
+    const sectionB = serializeProgressionForShare(data.sectionB || []);
+    if (!sectionA) return;
+    const setOrDelete = (key, value) => {
+      if (value === undefined || value === null || value === "") url.searchParams.delete(key);
+      else url.searchParams.set(key, String(value));
+    };
+
+    url.searchParams.delete(SHARE_QUERY_KEY); // migrate legacy param to friendly params
+    setOrDelete("v", SHARE_URL_VERSION);
+    setOrDelete("key", data.key);
+    setOrDelete("mode", data.mode);
+    setOrDelete("tempo", data.tempo);
+    setOrDelete("style", data.style);
+    setOrDelete("texture", data.texture);
+    setOrDelete("rhythm", data.rhythm);
+    setOrDelete("drumStyle", data.drumStyle);
+    setOrDelete("bassRhythm", data.bassRhythm);
+    setOrDelete("keyLocked", data.keyLocked ? 1 : "");
+    setOrDelete("aLoops", data.aRepeats);
+    setOrDelete("bLoops", data.bRepeats);
+    setOrDelete("section", data.activeSection === "B" ? "B" : "A");
+    setOrDelete("chord", Number.isFinite(data.selectedChord) ? data.selectedChord : 0);
+    setOrDelete("a", sectionA);
+    if (data.hasBSection && sectionB) {
+      setOrDelete("hasB", 1);
+      setOrDelete("b", sectionB);
+    } else {
+      url.searchParams.delete("hasB");
+      url.searchParams.delete("b");
+    }
+    const next = `${url.pathname}?${url.searchParams.toString()}${url.hash || ""}`;
+    const current = `${window.location.pathname}${window.location.search}${window.location.hash || ""}`;
+    if (next !== current) {
+      window.history.replaceState(null, "", next);
+    }
+  } catch (error) {
+    // best-effort URL sync
   }
 }
 
@@ -792,6 +964,7 @@ function init() {
   if (triadSelect) updateTriadNotes();
   buildFretboard();
   loadProgress();
+  restoreShareFromUrl();
   setStyle(state.style);
   updateSpicySuggestion();
   updateKeyBanner();
@@ -1641,6 +1814,7 @@ function init() {
       state.selectedChord = state.progression.length - 1;
       updateChordEditor();
       renderProgression();
+      scheduleSessionSave();
     });
   };
   attachProgressionDrop(progressionAEl, "A");
@@ -1717,6 +1891,7 @@ function init() {
   collapseMobileDetails();
   refreshKeyPicker();
   loadLatencyCompensation();
+  scheduleSessionSave();
 }
 
 function ensureRepeatOptions(selectEl, max = 16) {
@@ -2979,6 +3154,7 @@ function renderProgression() {
         }
         updateChordEditor();
         renderProgression();
+        scheduleSessionSave();
       });
       itemEl.addEventListener("dragstart", handleDragStart);
       itemEl.addEventListener("dragover", handleDragOver);
@@ -2997,6 +3173,7 @@ function renderProgression() {
       state.selectionDirtyForPlayback = true;
       updateChordEditor();
       renderProgression();
+      scheduleSessionSave();
     };
 
     const useMobileAdd = window.innerWidth <= 900;
@@ -3166,6 +3343,7 @@ function handleDrop(event) {
     state.selectedChord = dropIndex;
     updateChordEditor();
     renderProgression();
+    scheduleSessionSave();
     return;
   }
   if (!dragData || Number.isNaN(dragData.index) || Number.isNaN(dropIndex) || dragData.index === dropIndex) return;
@@ -3178,6 +3356,7 @@ function handleDrop(event) {
   state.selectedChord = dropIndex;
   updateChordEditor();
   renderProgression();
+  scheduleSessionSave();
 }
 
 function noteAt(root, interval, preferFlats = null) {
