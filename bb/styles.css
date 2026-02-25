@@ -403,40 +403,13 @@ body {
 .tempo-pill {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 0;
   min-width: 0;
-  padding: 10px 14px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
-  border: none;
-}
-
-.tempo-pill .tempo-label {
-  font-size: 0.85rem;
-  color: #e6f7ff;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-}
-
-.tempo-pill .tempo-wrap.funky {
   padding: 0;
   border-radius: 0;
+  background: transparent;
   border: none;
-  background: transparent;
-  flex-direction: row;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.tempo-pill input[type="range"] {
-  flex: 1 1 auto;
-  min-width: 0;
-  width: auto;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
+  min-height: 0;
 }
 .key-banner {
   display: inline-flex;
@@ -450,7 +423,7 @@ body {
   font-size: 1.05rem;
   letter-spacing: 0.4px;
   width: fit-content;
-  margin-bottom: 6px;
+  margin-bottom: 0;
   box-shadow: 0 10px 22px rgba(255, 140, 66, 0.2), 0 0 14px rgba(255, 94, 168, 0.18);
   cursor: pointer;
 }
@@ -821,52 +794,67 @@ input[type="text"] {
 
 .tempo-wrap {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 8px;
 }
 
 .tempo-pill .tempo-wrap {
-  flex-direction: row;
-  align-items: center;
-  gap: 10px;
-}
-
-.tempo-wrap.funky {
-  padding: 8px 10px;
-  border-radius: 14px;
-  background: linear-gradient(120deg, rgba(42, 212, 255, 0.15), rgba(255, 94, 168, 0.12));
-  border: 1px solid rgba(42, 212, 255, 0.3);
+  gap: 6px;
 }
 
 .tempo-wrap span {
-  font-size: 0.75rem;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 78px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #f3f7ff;
   white-space: nowrap;
 }
 
-.tempo-pill .tempo-wrap input[type="range"] {
-  width: auto;
-  flex: 1 1 110px;
-  min-width: 0;
-  padding: 0;
+.tempo-value {
+  cursor: text;
+}
+
+.tempo-inline-input {
+  width: 78px;
+  min-width: 78px;
+  height: 30px;
+  padding: 4px 8px;
+  text-align: center;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #f3f7ff;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(8, 12, 24, 0.82);
+}
+
+.tempo-range-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
   border: 0;
-  border-radius: 0;
-  background: transparent;
+  padding: 0;
+  clip: rect(0 0 0 0);
+  overflow: hidden;
 }
 
 .tempo-step {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
   line-height: 1;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(12, 16, 28, 0.4);
+  color: rgba(247, 252, 255, 0.92);
+  font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
 }
@@ -1177,11 +1165,24 @@ input[type="text"] {
 }
 
 .builder-details {
-  margin-top: 10px;
+  margin-top: 4px;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
 }
 
 .builder-details > summary {
   font-size: 0.82rem;
+  margin-bottom: 0;
+}
+
+.builder-details[open] {
+  margin-top: 2px;
+}
+
+.builder-details[open] > summary {
+  margin-bottom: 8px;
 }
 
 .chord-pool {
@@ -1463,12 +1464,23 @@ input[type="text"] {
   margin-bottom: 6px;
 }
 
+.spicy-category {
+  font-size: 0.68rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(183, 191, 214, 0.86);
+  margin-bottom: 6px;
+}
+
 .spicy-pill {
   padding: 6px 10px;
-  border-radius: 999px;
+  border-radius: 12px;
   background: rgba(255, 94, 168, 0.18);
   border: 1px solid rgba(255, 94, 168, 0.4);
   font-size: 0.85rem;
+  line-height: 1.3;
+  max-width: min(560px, 100%);
+  white-space: normal;
 }
 
 .spicy-actions {
@@ -1607,6 +1619,7 @@ input[type="text"] {
   margin-top: 0;
 }
 
+.style-pill,
 .rhythm-pill {
   appearance: none;
   cursor: pointer;
@@ -1620,16 +1633,40 @@ input[type="text"] {
   letter-spacing: 0.3px;
 }
 
+.style-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 12px;
+  font-weight: 600;
+}
+
+.style-pill::after {
+  content: "▾";
+  font-size: 0.62rem;
+  opacity: 0.72;
+  transform: translateY(1px);
+  transition: transform 140ms ease, opacity 140ms ease;
+}
+
+.style-pill[aria-expanded="true"]::after {
+  transform: rotate(180deg) translateY(-1px);
+  opacity: 0.94;
+}
+
+.style-pill:hover,
 .rhythm-pill:hover {
   border-color: rgba(255, 255, 255, 0.24);
   color: rgba(219, 223, 236, 0.95);
 }
 
+.style-wrap,
 .rhythm-wrap {
   position: relative;
   width: fit-content;
 }
 
+.style-editor,
 .rhythm-editor {
   position: absolute;
   top: calc(100% + 8px);
@@ -1645,14 +1682,55 @@ input[type="text"] {
   gap: 8px;
 }
 
+.style-editor-head {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(157, 166, 190, 0.92);
+}
+
+.style-editor label,
 .rhythm-editor label {
   font-size: 0.75rem;
   gap: 6px;
 }
 
+.style-editor select,
 .rhythm-editor select {
   padding: 7px 9px;
   border-radius: 10px;
+}
+
+.style-editor-note {
+  font-size: 0.69rem;
+  line-height: 1.35;
+  color: rgba(152, 160, 184, 0.9);
+}
+
+.style-select {
+  appearance: none;
+  font-weight: 600;
+  border: 1px solid rgba(134, 177, 255, 0.42);
+  background-image:
+    linear-gradient(45deg, transparent 50%, rgba(191, 213, 255, 0.94) 50%),
+    linear-gradient(135deg, rgba(191, 213, 255, 0.94) 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) calc(50% - 2px),
+    calc(100% - 11px) calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 30px;
+}
+
+.style-select:focus {
+  outline: none;
+  border-color: rgba(140, 192, 255, 0.92);
+  box-shadow: 0 0 0 2px rgba(94, 154, 255, 0.24);
+}
+
+.style-select optgroup {
+  color: rgba(203, 217, 245, 0.88);
+  font-style: normal;
 }
 
 .form-chip {
@@ -1673,6 +1751,26 @@ input[type="text"] {
 .form-chip:hover {
   border-color: rgba(255, 255, 255, 0.24);
   color: rgba(219, 223, 236, 0.95);
+}
+
+.vary-b-chip {
+  border-color: rgba(255, 140, 66, 0.35);
+  color: rgba(255, 209, 167, 0.9);
+}
+
+.vary-a-chip {
+  border-color: rgba(42, 212, 255, 0.35);
+  color: rgba(189, 239, 255, 0.9);
+}
+
+.vary-a-chip:hover {
+  border-color: rgba(108, 228, 255, 0.62);
+  color: rgba(226, 248, 255, 0.98);
+}
+
+.vary-b-chip:hover {
+  border-color: rgba(255, 168, 101, 0.62);
+  color: rgba(255, 235, 207, 0.98);
 }
 
 .form-chip-wrap {
@@ -2158,34 +2256,32 @@ button[title*="Copy Chords"] {
   }
 
   .tempo-pill {
-    flex-basis: 100%;
-    width: 100%;
-    justify-content: flex-start;
-    padding: 10px 12px;
-    overflow: hidden;
-    min-height: 50px;
+    min-height: 0;
+    padding: 0;
+    width: auto;
+    flex: 0 0 auto;
   }
 
   .tempo-pill .tempo-wrap {
-    flex: 1;
-    display: grid;
-    grid-template-columns: 44px minmax(0, 1fr) 44px auto;
-    align-items: center;
-    column-gap: 10px;
-    min-width: 0;
+    gap: 8px;
   }
 
   .tempo-pill .tempo-wrap span {
-    white-space: nowrap;
-    text-align: right;
-    min-width: 52px;
+    min-width: 78px;
+    font-size: 0.9rem;
+  }
+
+  .tempo-inline-input {
+    min-width: 78px;
+    height: 32px;
+    font-size: 0.9rem;
   }
 
   .tempo-step {
-    width: 44px;
-    height: 44px;
-    flex: 0 0 44px;
-    font-size: 1.2rem;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    font-size: 1.18rem;
   }
 
   .progression.large {
@@ -2252,6 +2348,7 @@ button[title*="Copy Chords"] {
     margin-top: 6px;
   }
 
+  .style-pill,
   .rhythm-pill {
     display: inline-flex;
     align-items: center;
@@ -2319,6 +2416,7 @@ button[title*="Copy Chords"] {
     padding: 9px 14px;
   }
 
+  .style-editor,
   .rhythm-editor,
   .form-editor {
     position: absolute;
@@ -2334,16 +2432,19 @@ button[title*="Copy Chords"] {
     z-index: 45;
   }
 
+  .style-editor,
   .rhythm-editor {
     left: 0;
   }
 
+  .style-editor label,
   .rhythm-editor label,
   .form-editor label {
     font-size: 0.92rem;
     gap: 8px;
   }
 
+  .style-editor select,
   .rhythm-editor select,
   .form-editor select {
     min-height: 44px;
@@ -2472,17 +2573,17 @@ button[title*="Copy Chords"] {
   }
 
   .tempo-pill {
-    min-height: 48px;
-    padding: 9px 11px;
-  }
-
-  .tempo-pill .tempo-label {
-    font-size: 0.8rem;
+    min-height: 0;
+    padding: 0;
   }
 
   .tempo-pill .tempo-wrap {
-    grid-template-columns: 44px minmax(0, 1fr) 44px auto;
-    column-gap: 8px;
+    gap: 8px;
+  }
+
+  .tempo-inline-input {
+    min-width: 78px;
+    height: 34px;
   }
 
   .tempo-step {

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Backing Buddy</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <link rel="stylesheet" href="bb/styles.css?v=20260211g" />
+  <link rel="stylesheet" href="bb/styles.css?v=20260211n" />
 </head>
 <body>
   <div class="bg-orbit"></div>
@@ -81,13 +81,22 @@
                   </svg>
                 </button>
                 <div class="tempo-pill">
-                  <div class="tempo-label">Tempo</div>
-                  <div class="tempo-wrap funky">
+                  <div class="tempo-wrap">
                     <button id="tempoDown" class="tempo-step" type="button">−</button>
-                    <input id="tempo" type="range" min="50" max="200" value="100" />
+                    <span id="tempoLabel" class="tempo-value" role="button" tabindex="0" aria-label="Edit tempo">100 bpm</span>
+                    <input
+                      id="tempoInlineInput"
+                      class="tempo-inline-input hidden"
+                      type="number"
+                      inputmode="numeric"
+                      min="50"
+                      max="200"
+                      step="1"
+                      aria-label="Tempo in beats per minute"
+                    />
                     <button id="tempoUp" class="tempo-step" type="button">+</button>
-                    <span id="tempoLabel">100 bpm</span>
                   </div>
+                  <input id="tempo" class="tempo-range-hidden" type="range" min="50" max="200" value="100" hidden />
                 </div>
               </div>
               <div class="playback transport-mini">
@@ -102,6 +111,33 @@
                 <span data-count="2">2</span>
                 <span data-count="3">3</span>
                 <span data-count="4">4</span>
+              </div>
+              <div class="style-wrap">
+                <button id="styleChip" class="style-pill" type="button" aria-expanded="false">Style: <span id="currentStyle">Pop</span></button>
+                <div id="styleEditor" class="style-editor hidden" aria-hidden="true">
+                  <div class="style-editor-head">Style / Genre</div>
+                  <label>
+                    Pick a groove family
+                    <select id="styleQuick" class="style-select" aria-label="Pick style genre">
+                      <option value="pop">Pop</option>
+                      <option value="rock">Rock</option>
+                      <option value="jazz">Jazz</option>
+                      <option value="blues">Blues</option>
+                      <option value="funk">Funk</option>
+                      <option value="reggae">Reggae</option>
+                      <option value="rnb">R&amp;B</option>
+                      <option value="garage">Garage</option>
+                      <option value="grime">Grime</option>
+                      <option value="bass">Bassline</option>
+                      <option value="house">House</option>
+                      <option value="techno">Techno</option>
+                      <option value="dnb">Drum &amp; Bass</option>
+                      <option value="hiphop">Hip-Hop</option>
+                      <option value="trap">Trap</option>
+                    </select>
+                  </label>
+                  <div class="style-editor-note">Affects drum kit, bass movement, comp rhythm, and sample tone.</div>
+                </div>
               </div>
               <div class="rhythm-wrap">
                 <button id="rhythmChip" class="rhythm-pill" type="button" aria-expanded="false">Rhythm: <span id="currentRhythm">Whole</span></button>
@@ -129,6 +165,8 @@
                 </label>
               </div>
               </div>
+              <button id="varyABtn" class="form-chip vary-a-chip" type="button" aria-label="Regenerate A section">Vary A</button>
+              <button id="varyBBtn" class="form-chip vary-b-chip" type="button" aria-label="Add and generate B section">Add B</button>
             </div>
             <div class="progression-sections">
               <div class="progression-section" data-section="A">
@@ -176,6 +214,7 @@
           <button id="presetPrev" class="preset-nav" type="button" aria-label="Previous preset page">‹</button>
           <div id="presetRow" class="preset-row">
             <button id="presetOneChord" class="btn ghost small">One Chord</button>
+            <button id="presetTwoChords" class="btn ghost small">Two Chords</button>
             <button id="presetBlues" class="btn ghost small">12 Bar Blues</button>
             <button id="presetFamous" class="btn ghost small">Famous Progressions</button>
             <button id="presetIIVI" class="btn ghost small">ii–V–I</button>
@@ -257,13 +296,24 @@
               </select>
             </label>
             <label>
-              Backing Vibe
-              <select id="styleSelect">
+              Genre / Style
+              <select id="styleSelect" class="style-select">
                 <option value="random">Random</option>
-                <option value="clean">Clean Pop</option>
-                <option value="neosoul">Neo-Soul</option>
-                <option value="jazz">Jazz Club</option>
-                <option value="cinematic">Cinematic</option>
+                <option value="pop">Pop</option>
+                <option value="rock">Rock</option>
+                <option value="jazz">Jazz</option>
+                <option value="blues">Blues</option>
+                <option value="funk">Funk</option>
+                <option value="reggae">Reggae</option>
+                <option value="rnb">R&amp;B</option>
+                <option value="garage">Garage</option>
+                <option value="grime">Grime</option>
+                <option value="bass">Bassline</option>
+                <option value="house">House</option>
+                <option value="techno">Techno</option>
+                <option value="dnb">Drum &amp; Bass</option>
+                <option value="hiphop">Hip-Hop</option>
+                <option value="trap">Trap</option>
               </select>
             </label>
             <label>
@@ -273,7 +323,7 @@
               </select>
             </label>
           </div>
-          <div class="note">Backing vibe sets the tone, rhythm feel, and drum pattern.</div>
+          <div class="note">Genre drives drum kit, bass movement, comp rhythm, and instrument voicing.</div>
 
           <div class="progression-tools">
             <div>
@@ -286,6 +336,7 @@
               <div class="spicy-row">
                 <div>
                   <div class="spicy-title">Spicy Suggestion</div>
+                  <div id="spicyCategory" class="spicy-category">—</div>
                   <div id="spicySuggestion" class="spicy-pill">—</div>
                 </div>
                 <div class="spicy-actions">
@@ -369,6 +420,12 @@
                 <option value="eighths">Eighth Pulse</option>
                 <option value="syncopated">Syncopated</option>
                 <option value="offbeat">Offbeat</option>
+                <option value="garage2step">2-Step (Garage)</option>
+                <option value="grimeSub">Sub Groove (Grime)</option>
+                <option value="ukBass">UK Bassline</option>
+                <option value="trap808">Trap 808 Glide</option>
+                <option value="dnbRoll">DnB Roll</option>
+                <option value="technoDrive">Four-on-Floor (Techno)</option>
                 <option value="tresillo">Tresillo</option>
                 <option value="push">Push Accents</option>
                 <option value="oneDrop">Reggae One-Drop</option>
@@ -400,24 +457,24 @@
             <label>
               Piano Level
               <div class="level-row">
-                <input id="pianoLevel" type="range" min="0" max="100" step="1" value="55" />
-                <span id="pianoLevelValue">55%</span>
+                <input id="pianoLevel" type="range" min="0" max="100" step="1" value="50" />
+                <span id="pianoLevelValue">50%</span>
               </div>
             </label>
             <label>
               Guitar Level
               <div class="level-row">
-                <input id="guitarLevel" type="range" min="0" max="100" step="1" value="30" />
-                <span id="guitarLevelValue">30%</span>
+                <input id="guitarLevel" type="range" min="0" max="100" step="1" value="50" />
+                <span id="guitarLevelValue">50%</span>
               </div>
             </label>
             <label>
               Drum Level
-              <input id="drumLevel" type="range" min="0" max="100" step="1" value="60" />
+              <input id="drumLevel" type="range" min="0" max="100" step="1" value="50" />
             </label>
             <label>
               Bass Level
-              <input id="bassLevel" type="range" min="0" max="100" step="1" value="100" />
+              <input id="bassLevel" type="range" min="0" max="100" step="1" value="50" />
             </label>
             <label>
               Bass Timing
@@ -438,6 +495,19 @@
               <select id="drumStyleSelect">
                 <option value="random">Random</option>
                 <option value="pop" selected>Pop/Rock</option>
+                <option value="rock">Rock</option>
+                <option value="blues">Blues</option>
+                <option value="garage">Garage</option>
+                <option value="grime">Grime</option>
+                <option value="bass">Bassline</option>
+                <option value="house">House</option>
+                <option value="techno">Techno</option>
+                <option value="hiphop">Hip-Hop</option>
+                <option value="trap">Trap</option>
+                <option value="funk">Funk</option>
+                <option value="reggae">Reggae</option>
+                <option value="dnb">Drum &amp; Bass</option>
+                <option value="rnb">R&amp;B</option>
                 <option value="electronic">Electronic</option>
                 <option value="edm">EDM</option>
                 <option value="industrial">Industrial</option>
@@ -462,7 +532,7 @@
           <div class="fretboard-head">
             <label class="toggle compact">
               Show fretboard
-              <input id="fretToggle" type="checkbox" />
+              <input id="fretToggle" type="checkbox" checked />
             </label>
             <label class="toggle compact">
               Show scale only
@@ -486,7 +556,7 @@
   </main>
 
   <footer class="footer footer-credits">
-    <div class="footer-attribution">CC BY 3.0: Pearl Master Studio • CR-78 Public Domain (via oramics)</div>
+    <div class="footer-attribution">CC BY 3.0: Pearl Master Studio • CR-78 Public Domain (via oramics) • The Libre Sample Pack (CC0)</div>
     <div class="footer-attribution">Shortcuts: Space Play/Pause • R Regenerate • B Toggle B Section • M Download MIDI</div>
   </footer>
 
@@ -513,6 +583,6 @@
     </button>
   </div>
 
-  <script src="bb/app.js?v=20260211l"></script>
+  <script src="bb/app.js?v=20260217i"></script>
 </body>
 </html>

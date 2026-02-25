@@ -96,9 +96,17 @@ globalThis.__btgExports = {
   buildMidiFile,
   getRhythmNameForSection,
   getDrumPatternForSection,
+  getSequenceSectionAtBeat,
   getHighlightNotes,
   displayNoteForKey,
-  scaleOnlyToggle
+  getSpicySuggestions,
+  generateBSectionFromCorpus,
+  buildBorrowedChords,
+  borrowedChords,
+  scaleOnlyToggle,
+  styleSelect,
+  modeSelect,
+  genLength
 };`;
 
   const nodes = new Map();
@@ -293,6 +301,14 @@ test("defaults A/B loops to 2", () => {
   assert.equal(state.bRepeats, 2);
 });
 
+test("default mix levels start centered", () => {
+  const { state } = loadEngine();
+  assert.equal(state.pianoLevel, 0.5);
+  assert.equal(state.guitarLevel, 0.5);
+  assert.equal(state.drumLevel, 0.5);
+  assert.equal(state.bassLevel, 0.5);
+});
+
 test("buildPlaybackSequence honors A/B repeats", () => {
   const { state, createChordItem, buildPlaybackSequence } = loadEngine();
   resetState(state);
@@ -322,6 +338,39 @@ test("B section uses a subtle alternate rhythm and drum pattern", () => {
   assert.notEqual(getDrumPatternForSection("A"), getDrumPatternForSection("B"));
 });
 
+test("sequence section mapping resolves A/B and wraps correctly", () => {
+  const { state, createChordItem, buildPlaybackSequence, getSequenceSectionAtBeat } = loadEngine();
+  resetState(state);
+  state.sectionA = [createChordItem("I", 4), createChordItem("V", 4)];
+  state.sectionB = [createChordItem("vi", 4)];
+  state.progression = state.sectionA;
+  state.hasBSection = true;
+  state.aRepeats = 1;
+  state.bRepeats = 1;
+  const sequence = buildPlaybackSequence();
+
+  assert.equal(getSequenceSectionAtBeat(sequence, 0), "A");
+  assert.equal(getSequenceSectionAtBeat(sequence, 7.99), "A");
+  assert.equal(getSequenceSectionAtBeat(sequence, 8.01), "B");
+  assert.equal(getSequenceSectionAtBeat(sequence, 11.99), "B");
+  assert.equal(getSequenceSectionAtBeat(sequence, 12), "A");
+});
+
+test("B section generation preserves A total beats using 4 chords", () => {
+  const { state, createChordItem, generateBSectionFromCorpus } = loadEngine();
+  resetState(state);
+  state.mode = "major";
+  state.sectionA = [createChordItem("I", 8), createChordItem("V", 8)];
+  state.progression = state.sectionA;
+
+  generateBSectionFromCorpus();
+
+  assert.equal(state.hasBSection, true);
+  assert.equal(state.sectionB.length, 4);
+  assert.equal(state.sectionB.reduce((sum, item) => sum + item.beats, 0), 16);
+  assert.ok(state.sectionB.every((item) => item.beats === 4));
+});
+
 test("MIDI export includes full A/B form plus bass and drums", () => {
   const { state, createChordItem, buildMidiFile } = loadEngine();
   resetState(state);
@@ -348,8 +397,8 @@ test("MIDI export includes full A/B form plus bass and drums", () => {
     });
   });
 
-  assert.equal(totalByChannel.get(0), 18); // A whole + B subtle variation (halves)
-  assert.equal(totalByChannel.get(1), 8); // 4 bars * 2 bass hits
+  assert.ok((totalByChannel.get(0) || 0) >= 18); // includes core chord form with optional phrase variation
+  assert.ok((totalByChannel.get(1) || 0) >= 8); // includes core bass form with optional phrase variation
   assert.ok((totalByChannel.get(9) || 0) > 0); // drum channel present
 });
 
@@ -404,6 +453,55 @@ test("generateProgression uses friendly key spellings when unlocked", () => {
   assert.ok(seen.size >= 6);
 });
 
+test("generateProgression uses 12-bar blues when blues style is selected", () => {
+  const { state, generateProgression, styleSelect, modeSelect, genLength } = loadEngine();
+  resetState(state);
+  if (styleSelect) styleSelect.value = "blues";
+  if (modeSelect) modeSelect.value = "minor";
+  if (genLength) genLength.value = "4";
+
+  generateProgression();
+
+  const tokens = state.sectionA.map((item) => item.token);
+  assert.equal(
+    JSON.stringify(tokens),
+    JSON.stringify(["I", "I", "I", "I", "IV", "IV", "I", "I", "V", "IV", "I", "V"])
+  );
+  assert.ok(state.sectionA.every((item) => item.beats === 4));
+  assert.ok(state.sectionA.every((item) => Array.isArray(item.exts) && item.exts.includes("7")));
+  assert.equal(state.mode, "major");
+});
+
+test("spicy suggestions expose categorized multi-chord ideas", () => {
+  const { state, getSpicySuggestions } = loadEngine();
+  resetState(state);
+  state.mode = "major";
+  state.key = "C";
+  const majorSuggestions = getSpicySuggestions();
+  assert.ok(majorSuggestions.length >= 6);
+  assert.ok(majorSuggestions.every((entry) => typeof entry.category === "string" && entry.category.length > 0));
+  assert.ok(majorSuggestions.some((entry) => entry.category === "Secondary Dominant"));
+  assert.ok(majorSuggestions.some((entry) => Array.isArray(entry.items) && entry.items.length >= 2));
+  assert.ok(
+    majorSuggestions.some((entry) => entry.items.map((item) => item.roman).join(" -> ").includes("V/V -> V7"))
+  );
+
+  state.mode = "minor";
+  const minorSuggestions = getSpicySuggestions();
+  assert.ok(minorSuggestions.some((entry) => entry.category === "Neapolitan"));
+  assert.ok(minorSuggestions.some((entry) => entry.category === "ii-V-i"));
+});
+
+test("borrowed chord palette can render structured spicy suggestions", () => {
+  const { state, buildBorrowedChords, borrowedChords } = loadEngine();
+  resetState(state);
+  state.mode = "major";
+  state.key = "C";
+
+  assert.doesNotThrow(() => buildBorrowedChords());
+  assert.ok(borrowedChords.children.length > 0);
+});
+
 test("applyPreset clears B section and rebuilds playback sequence from A only", () => {
   const { state, createChordItem, buildPlaybackSequence, applyPreset } = loadEngine();
   resetState(state);
@@ -437,10 +535,128 @@ test("form popup markup includes repeat controls and B section toggle", () => {
   assert.ok(html.includes('id="formBRepeats"'));
 });
 
+test("tempo pill markup supports inline tempo editing", () => {
+  const html = fs.readFileSync("/Users/nick/codex/portfolio/bb.html", "utf8");
+  assert.ok(html.includes('id="tempoLabel"'));
+  assert.ok(html.includes('id="tempoInlineInput"'));
+});
+
+test("drum and bass synth routing avoids the old piano-ish dnb chord sample", () => {
+  const source = fs.readFileSync("/Users/nick/codex/portfolio/bb/app.js", "utf8");
+  assert.ok(source.includes("synth_dnb_v2"));
+  assert.ok(!source.includes("bb/samples/synth/styles/dnb-chord.wav"));
+});
+
+test("grime synth routing avoids the old grime chord sample", () => {
+  const source = fs.readFileSync("/Users/nick/codex/portfolio/bb/app.js", "utf8");
+  assert.ok(source.includes("synth_grime_v2"));
+  assert.ok(!source.includes("bb/samples/synth/styles/grime-chord.wav"));
+});
+
+test("grime synth routing no longer uses grime-tone sample", () => {
+  const source = fs.readFileSync("/Users/nick/codex/portfolio/bb/app.js", "utf8");
+  const block = source.match(/synth_grime_v2:\s*\[[\s\S]*?\],/);
+  assert.ok(block);
+  assert.ok(!block[0].includes("bb/samples/synth/styles/grime-tone.wav"));
+});
+
+test("garage synth routing avoids house/techno chord sources", () => {
+  const source = fs.readFileSync("/Users/nick/codex/portfolio/bb/app.js", "utf8");
+  const block = source.match(/synth_garage:\s*\[[\s\S]*?\],/);
+  assert.ok(block);
+  assert.ok(!block[0].includes("bb/samples/synth/styles/house-chord.wav"));
+  assert.ok(!block[0].includes("bb/samples/synth/styles/techno-chord.wav"));
+});
+
+test("club synth routings avoid harsh shared stab/chord samples", () => {
+  const source = fs.readFileSync("/Users/nick/codex/portfolio/bb/app.js", "utf8");
+  const blocks = ["synth_grime_v2", "synth_bass_v2", "synth_dnb_v2"].map((name) => source.match(new RegExp(`${name}:\\s*\\[[\\s\\S]*?\\],`)));
+  blocks.forEach((block) => assert.ok(block));
+  blocks.forEach((block) => {
+    assert.ok(!block[0].includes("bb/samples/synth/styles/grime-stab.wav"));
+    assert.ok(!block[0].includes("bb/samples/synth/styles/bass-chord.wav"));
+  });
+});
+
+test("club synth sets keep to per-genre allowlisted sources", () => {
+  const source = fs.readFileSync("/Users/nick/codex/portfolio/bb/app.js", "utf8");
+  const allowlists = {
+    synth_garage: [
+      "bb/samples/synth/styles/bass-tone.wav",
+      "bb/samples/synth/passb/garage-organ-chop.wav",
+      "bb/samples/synth/passb/uk-stab-crisp.wav"
+    ],
+    synth_grime_v2: [
+      "bb/samples/synth/passb/grime-square-cold.wav"
+    ],
+    synth_bass_v2: [
+      "bb/samples/synth/passb/bassline-warp-mid.wav"
+    ],
+    synth_dnb_v2: [
+      "bb/samples/synth/passb/dnb-reese-lite.wav"
+    ]
+  };
+  Object.entries(allowlists).forEach(([sampleSet, urls]) => {
+    const block = source.match(new RegExp(`${sampleSet}:\\s*\\[[\\s\\S]*?\\],`));
+    assert.ok(block);
+    const matches = Array.from(block[0].matchAll(/url:\s*"([^"]+)"/g)).map((entry) => entry[1]);
+    assert.ok(matches.length > 0);
+    matches.forEach((url) => assert.ok(urls.includes(url)));
+    assert.ok(!block[0].includes("bb/samples/synth/styles/grime-tone.wav"));
+    assert.ok(!block[0].includes("bb/samples/synth/styles/grime-chord.wav"));
+    assert.ok(!block[0].includes("bb/samples/synth/styles/grime-stab.wav"));
+    if (sampleSet !== "synth_garage") {
+      assert.ok(!block[0].includes("bb/samples/synth/passb/uk-stab-crisp.wav"));
+    }
+  });
+});
+
+test("pass B curated synth sample files exist on disk", () => {
+  const files = [
+    "/Users/nick/codex/portfolio/bb/samples/synth/passb/garage-organ-chop.wav",
+    "/Users/nick/codex/portfolio/bb/samples/synth/passb/grime-square-cold.wav",
+    "/Users/nick/codex/portfolio/bb/samples/synth/passb/bassline-warp-mid.wav",
+    "/Users/nick/codex/portfolio/bb/samples/synth/passb/dnb-reese-lite.wav",
+    "/Users/nick/codex/portfolio/bb/samples/synth/passb/trap-808-sub.wav",
+    "/Users/nick/codex/portfolio/bb/samples/synth/passb/uk-stab-crisp.wav"
+  ];
+  files.forEach((file) => assert.ok(fs.existsSync(file), file));
+});
+
+test("bassline and trap drums use genre-typical kick/snare placement", () => {
+  const { DRUM_PATTERN_BANK } = loadEngine();
+  const bassPatterns = DRUM_PATTERN_BANK.bass || [];
+  const trapPatterns = DRUM_PATTERN_BANK.trap || [];
+  assert.ok(bassPatterns.length > 0);
+  assert.ok(trapPatterns.length > 0);
+  bassPatterns.forEach((pattern) => {
+    assert.equal(JSON.stringify(pattern.kick), JSON.stringify([0, 1, 2, 3]));
+  });
+  trapPatterns.forEach((pattern) => {
+    assert.equal(JSON.stringify(pattern.snare), JSON.stringify([2]));
+  });
+});
+
+test("garage and dnb kits use genre-matched core drum samples", () => {
+  const source = fs.readFileSync("/Users/nick/codex/portfolio/bb/app.js", "utf8");
+  const garageKit = source.match(/libre_garage:\s*\{[\s\S]*?\},/);
+  const dnbKit = source.match(/libre_dnb:\s*\{[\s\S]*?\},/);
+  assert.ok(garageKit);
+  assert.ok(dnbKit);
+  assert.ok(garageKit[0].includes("bb/samples/drums/libre/garage/kick.wav"));
+  assert.ok(garageKit[0].includes("bb/samples/drums/libre/garage/hat.wav"));
+  assert.ok(dnbKit[0].includes("bb/samples/drums/libre/dnb/snare-b.wav"));
+});
+
 test("refresh button is mobile-only in stylesheet", () => {
   const css = fs.readFileSync("/Users/nick/codex/portfolio/bb/styles.css", "utf8");
   assert.match(css, /\.key-refresh\s*\{[^}]*display:\s*none;/s);
   assert.match(css, /@media\s*\(max-width:\s*900px\)\s*\{[\s\S]*?\.key-refresh\s*\{[^}]*display:\s*inline-flex;/s);
+});
+
+test("style dropdown labels bass as Bassline", () => {
+  const html = fs.readFileSync("/Users/nick/codex/portfolio/bb.html", "utf8");
+  assert.ok(html.includes('<option value="bass">Bassline</option>'));
 });
 
 test("major bIII is treated as spicy in displayed label", () => {
