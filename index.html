@@ -4,20 +4,21 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nick Webb Special Projects</title>
+    <title>Nick Webb</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap"
+      rel="stylesheet"
+    />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Space+Grotesk:wght@400;500;600&display=swap");
-
       :root {
-        --bg: #0d0f15;
-        --panel: rgba(255, 255, 255, 0.06);
-        --panel-strong: rgba(255, 255, 255, 0.1);
-        --text: #f5f7ff;
-        --muted: #a5b0c8;
-        --accent: #ff6ad5;
-        --accent-2: #4deeea;
-        --accent-3: #ffe66d;
-        --glow: 0 20px 60px rgba(255, 106, 213, 0.25);
+        --bg: #0b0c0f;
+        --bg-soft: #101219;
+        --line: #232736;
+        --text: #f5f6fb;
+        --muted: #9aa0b3;
+        --link: #c8cee3;
       }
 
       * {
@@ -26,113 +27,129 @@
 
       body {
         margin: 0;
-        font-family: "Space Grotesk", sans-serif;
-        color: var(--text);
-        background: radial-gradient(circle at 10% 10%, #1b2137 0%, #0c0f17 45%, #090b11 100%);
         min-height: 100vh;
-        overflow-x: hidden;
+        color: var(--text);
+        font-family: "Sora", "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at 84% 14%, rgba(74, 83, 134, 0.18), transparent 34%),
+          radial-gradient(circle at 10% 90%, rgba(82, 100, 173, 0.16), transparent 37%),
+          linear-gradient(150deg, #08090d 0%, var(--bg) 55%, #090a0f 100%);
       }
 
-      .orb {
-        position: fixed;
-        width: 420px;
-        height: 420px;
-        border-radius: 50%;
-        background: radial-gradient(circle, rgba(255, 106, 213, 0.35), transparent 70%);
-        top: -120px;
-        right: -80px;
-        filter: blur(2px);
-        z-index: -1;
-      }
-
-      .orb.secondary {
-        width: 360px;
-        height: 360px;
-        left: -100px;
-        bottom: -120px;
-        background: radial-gradient(circle, rgba(77, 238, 234, 0.3), transparent 70%);
-      }
-
-      .wrap {
-        max-width: 1100px;
+      .shell {
+        width: min(1080px, 100%);
         margin: 0 auto;
-        padding: 40px 6vw 70px;
-      }
-
-      header {
+        padding: clamp(1.4rem, 4vw, 3.2rem);
+        min-height: 100vh;
         display: grid;
-        gap: 22px;
+        grid-template-columns: minmax(280px, 1fr) minmax(260px, 0.8fr);
+        gap: clamp(1.5rem, 4vw, 4rem);
         align-items: center;
-        margin-bottom: 60px;
       }
 
-      .title {
-        font-family: "Unbounded", cursive;
-        font-size: clamp(2.4rem, 5vw, 4.1rem);
-        line-height: 1;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        background: linear-gradient(120deg, #ff6ad5, #4deeea 55%, #ffe66d);
-        -webkit-background-clip: text;
-        color: transparent;
+      .identity h1 {
+        margin: 0;
+        font-family: "Fraunces", Georgia, serif;
+        font-weight: 700;
+        font-size: clamp(2.1rem, 5.5vw, 4.7rem);
+        letter-spacing: 0.01em;
+        line-height: 0.95;
       }
 
-      .subtitle {
-        color: var(--muted);
-        max-width: 560px;
-        font-size: 1.08rem;
-      }
-
-      .actions {
+      .social {
+        margin-top: 1.4rem;
         display: flex;
         flex-wrap: wrap;
-        gap: 16px;
+        gap: 0.85rem 1.1rem;
       }
 
-      a.button,
-      a.ghost {
+      .social a {
+        color: var(--link);
         text-decoration: none;
-        color: var(--text);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        padding: 12px 18px;
-        border-radius: 999px;
-        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-        font-weight: 600;
+        font-size: 0.95rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        border-bottom: 1px solid transparent;
+        transition: color 180ms ease, border-color 180ms ease;
       }
 
-      a.button:hover,
-      a.ghost:hover {
-        transform: translateY(-2px);
-        background: linear-gradient(120deg, #ffe66d, #ff6ad5, #4deeea);
-        color: #0c0f17;
-        box-shadow: 0 16px 32px rgba(255, 106, 213, 0.3);
+      .social a:hover {
+        color: #ffffff;
+        border-color: rgba(255, 255, 255, 0.45);
       }
 
-      footer {
-        margin-top: 50px;
+      .projects {
+        justify-self: end;
+        width: min(100%, 360px);
+        padding: 1.15rem 0 1.15rem 1.3rem;
+        border-left: 1px solid var(--line);
+      }
+
+      .projects h2 {
+        margin: 0 0 0.9rem;
         color: var(--muted);
-        font-size: 0.9rem;
+        font-size: 0.72rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+      }
+
+      .projects a {
+        display: block;
+        color: var(--text);
+        text-decoration: none;
+        font-family: "Fraunces", Georgia, serif;
+        font-size: clamp(1.15rem, 2.2vw, 1.5rem);
+        padding: 0.36rem 0;
+        opacity: 0.9;
+        transition: opacity 180ms ease, transform 180ms ease;
+      }
+
+      .projects a:hover {
+        opacity: 1;
+        transform: translateX(3px);
+      }
+
+      @media (max-width: 860px) {
+        .shell {
+          grid-template-columns: 1fr;
+          align-content: center;
+        }
+
+        .projects {
+          justify-self: start;
+          border-left: 0;
+          border-top: 1px solid var(--line);
+          padding: 1.1rem 0 0;
+          width: 100%;
+          max-width: 520px;
+        }
       }
     </style>
   </head>
   <body>
-    <div class="orb"></div>
-    <div class="orb secondary"></div>
-    <div class="wrap">
-      <header>
-        <div class="title">Nick Webb Special Projects</div>
-        <div class="subtitle">
-          A playground of creative experiments, tools, and prototypes.
-        </div>
-        <div class="actions">
-          <a class="ghost" href="bb.html">Backing Buddy</a>
-          <a class="ghost" href="shuffle.html">ShapeShuffler</a>
-          <a class="ghost" href="kemper.html">Kemper Artist➡Profile</a>
-          <a class="ghost" href="progs/">Progs</a>
-        </div>
-      </header>
+    <main class="shell">
+      <section class="identity" aria-label="Profile">
+        <h1>Nick Webb</h1>
+        <nav class="social" aria-label="Social links">
+          <a href="https://x.com/nickwebb" target="_blank" rel="noreferrer noopener">X/Twitter</a>
+          <a href="https://instagram.com/nickjwebb" target="_blank" rel="noreferrer noopener">Instagram</a>
+          <a href="https://github.com/nickwebb" target="_blank" rel="noreferrer noopener">GitHub</a>
+          <a href="mailto:nickwebb1@gmail.com">Email</a>
+        </nav>
+      </section>
 
-      <footer>Hello George and Molly! Love, Daddy xxxx</footer>
-    </div>
+      <section class="projects" aria-label="Projects">
+        <h2>Projects</h2>
+        <a href="bb.html">Backing Buddy</a>
+        <a href="shuffle.html">ShapeShuffler</a>
+        <a href="kemper.html">Kemper Artist Profile</a>
+        <a href="progs/">Progs</a>
+        <a href="https://buffettfaq.com" target="_blank" rel="noreferrer noopener">Buffett FAQ</a>
+        <a href="https://sweetspothomes.com" target="_blank" rel="noreferrer noopener">SweetSpot</a>
+        <a href="stamp.html">Stamp</a>
+        <a href="housecalc.html">House Calc</a>
+      </section>
+    </main>
   </body>
 </html>
