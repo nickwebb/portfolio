@@ -654,9 +654,24 @@ test("refresh button is mobile-only in stylesheet", () => {
   assert.match(css, /@media\s*\(max-width:\s*900px\)\s*\{[\s\S]*?\.key-refresh\s*\{[^}]*display:\s*inline-flex;/s);
 });
 
-test("style dropdown labels bass as Bassline", () => {
+test("style dropdown is restricted to pop rock blues jazz funk", () => {
   const html = fs.readFileSync("/Users/nick/codex/portfolio/bb.html", "utf8");
-  assert.ok(html.includes('<option value="bass">Bassline</option>'));
+  const quickBlock = html.match(/<select id="styleQuick"[\s\S]*?<\/select>/);
+  const styleBlock = html.match(/<select id="styleSelect"[\s\S]*?<\/select>/);
+  assert.ok(quickBlock);
+  assert.ok(styleBlock);
+  const combined = `${quickBlock[0]}\n${styleBlock[0]}`;
+  ["pop", "rock", "blues", "jazz", "funk"].forEach((style) => {
+    assert.ok(combined.includes(`<option value="${style}">`));
+  });
+  ["garage", "grime", "bass", "house", "techno", "dnb", "hiphop", "trap", "reggae", "rnb"].forEach((style) => {
+    assert.ok(!combined.includes(`<option value="${style}">`));
+  });
+});
+
+test("style randomization list is restricted to the five active styles", () => {
+  const source = fs.readFileSync("/Users/nick/codex/portfolio/bb/app.js", "utf8");
+  assert.ok(source.includes('const ACTIVE_STYLE_KEYS = ["pop", "rock", "blues", "jazz", "funk"];'));
 });
 
 test("major bIII is treated as spicy in displayed label", () => {

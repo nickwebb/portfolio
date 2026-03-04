@@ -766,6 +766,8 @@ const STYLE_ALIASES = {
   neosoul: "rnb",
   cinematic: "house"
 };
+const ACTIVE_STYLE_KEYS = ["pop", "rock", "blues", "jazz", "funk"];
+const ACTIVE_STYLE_SET = new Set(ACTIVE_STYLE_KEYS);
 
 const STYLE_LABELS = {
   pop: "Pop",
@@ -1941,7 +1943,7 @@ function init() {
 
   styleSelect.addEventListener("change", () => {
     if (styleSelect.value === "random") {
-      const keys = Object.keys(STYLE_PRESETS);
+      const keys = ACTIVE_STYLE_KEYS.filter((key) => STYLE_PRESETS[key]);
       setStyle(keys[Math.floor(Math.random() * keys.length)] || "pop", { adjustTempo: true, forceTempo: true });
     } else {
       setStyle(styleSelect.value, { adjustTempo: true, forceTempo: true });
@@ -2642,7 +2644,8 @@ function normalizeProgression(items) {
 
 function normalizeStyle(style) {
   const mapped = STYLE_ALIASES[style] || style;
-  return STYLE_PRESETS[mapped] ? mapped : "pop";
+  if (!STYLE_PRESETS[mapped]) return "pop";
+  return ACTIVE_STYLE_SET.has(mapped) ? mapped : "pop";
 }
 
 function formatStyleLabel(styleName) {
@@ -4000,7 +4003,7 @@ function generateProgression() {
     modeSelect.value = chosenMode;
   }
 
-  const styleOptions = Object.keys(STYLE_PRESETS);
+  const styleOptions = ACTIVE_STYLE_KEYS.filter((key) => STYLE_PRESETS[key]);
   const chosenStyle = styleSelect?.value === "random"
     ? styleOptions[Math.floor(Math.random() * styleOptions.length)]
     : normalizeStyle(styleSelect?.value || state.style || "pop");
