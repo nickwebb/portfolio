@@ -6391,7 +6391,7 @@ function downloadMidi() {
   const keyPart = `${state.key}-${state.mode}`;
   const tempoPart = `${state.tempo || 100}bpm`;
   const progressionPart = buildProgressionFilenamePart();
-  const rawName = `backing-buddy-${keyPart}-${tempoPart}-${progressionPart}`.toLowerCase();
+  const rawName = `kordy-${keyPart}-${tempoPart}-${progressionPart}`.toLowerCase();
   link.download = `${sanitizeFilenamePart(rawName, 180)}.mid`;
   document.body.appendChild(link);
   link.click();
